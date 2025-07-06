@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 
 interface ContainerInfo {
@@ -36,6 +36,7 @@ export default function MonitoringPage() {
   const [containers, setContainers] = useState<ContainerInfo[]>([]);
   const [stats, setStats] = useState<Record<string, ContainerStats | null>>({});
   const [loading, setLoading] = useState(true);
+  const workerRef = useRef<Worker | null>(null);
 
   // Fetch containers once
   useEffect(() => {
@@ -52,37 +53,36 @@ export default function MonitoringPage() {
     fetchContainers();
   }, []);
 
-  // Poll stats for each container
+  // Use Web Worker for polling stats
   useEffect(() => {
-    let mounted = true;
-    let interval: NodeJS.Timeout;
-    const pollStats = async () => {
-      const newStats: Record<string, ContainerStats | null> = {};
-      await Promise.all(containers.map(async (c) => {
-        try {
-          const res = await fetch(`/api/docker/containers/${c.Id}/stats`);
-          const data = await res.json();
-          newStats[c.Id] = data;
-        } catch {
-          newStats[c.Id] = null;
-        }
-      }));
-      if (mounted) setStats(newStats);
-    };
-    if (containers.length > 0) {
-      pollStats();
-      interval = setInterval(pollStats, 2000);
+    if (tab !== 'containers') {
+      // Stop worker if not on containers tab
+      if (workerRef.current) {
+        workerRef.current.postMessage({ type: 'stop' });
+      }
+      return;
     }
-    return () => {
-      mounted = false;
-      if (interval) clearInterval(interval);
+    if (typeof window === 'undefined') return;
+    // Dynamically import worker
+    // @ts-ignore
+    const worker = new Worker(new URL('./containerStatsWorker.ts', import.meta.url), { type: 'module' });
+    workerRef.current = worker;
+    worker.onmessage = (e) => {
+      if (e.data && e.data.type === 'stats') {
+        setStats(e.data.stats);
+      }
     };
-  }, [containers]);
+    worker.postMessage({ type: 'start', containers, origin: window.location.origin });
+    return () => {
+      worker.postMessage({ type: 'stop' });
+      worker.terminate();
+      workerRef.current = null;
+    };
+  }, [containers, tab]);
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex flex-col items-center">
-      <div className="w-full max-w-6xl mt-8">
-        <h1 className="text-2xl font-bold mb-6">Monitoring</h1>
+    <div className="w-full min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 items-center">
+      <div className="w-full max-w-8xl mt-8">
         <div className="flex gap-4 mb-6">
           <button className={`px-4 py-2 rounded ${tab === 'containers' ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 border border-blue-200'}`} onClick={() => setTab('containers')}>Containers</button>
           <button className={`px-4 py-2 rounded ${tab === 'storage' ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 border border-blue-200'}`} onClick={() => setTab('storage')}>Storage Distribution</button>
