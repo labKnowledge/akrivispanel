@@ -128,22 +128,22 @@ export default function ContainerDetailsPage() {
           {tab === 'logs' && (
             <div className="mt-2">
               {logsLoading ? (
-                <div className="text-gray-400">Loading logs...</div>
+                <pre className="w-full max-w-7xl max-h-150 bg-gray-900 overflow-y-auto text-green-100 rounded p-4 overflow-x-auto  text-xs whitespace-pre-wrap break-words overflow-x-auto">Loading inspect data...</pre>
               ) : logsError ? (
                 <div className="text-red-500">{logsError}</div>
               ) : (
-                <pre className="w-full  bg-gray-900 text-gray-100 rounded p-4 overflow-x-auto  text-xs whitespace-pre-wrap break-words">{logs || 'No logs found.'}</pre>
+                <pre className="w-full  max-w-7xl max-h-150   bg-gray-900 text-gray-100 rounded p-4 overflow-x-auto  text-xs whitespace-pre-wrap break-words">{logs || 'No logs found.'}</pre>
               )}
             </div>
           )}
           {tab === 'inspect' && (
             <div className=" mt-2">
               {inspectLoading ? (
-                <div className="text-gray-400">Loading inspect data...</div>
+                <pre className="w-full max-w-7xl max-h-150 bg-gray-900 overflow-y-auto text-green-100 rounded p-4 overflow-x-auto  text-xs whitespace-pre-wrap break-words overflow-x-auto">Loading inspect data...</pre>
               ) : inspectError ? (
                 <div className="text-red-500">{inspectError}</div>
               ) : (
-                <pre className="w-full  bg-gray-900 text-green-100 rounded p-4 overflow-x-auto  text-xs whitespace-pre-wrap break-words overflow-x-auto">{JSON.stringify(inspect, null, 2)}</pre>
+                <pre className="w-full max-w-7xl max-h-150 bg-gray-900 overflow-y-auto text-green-100 rounded p-4  text-xs whitespace-pre-wrap break-words overflow-x-auto">{JSON.stringify(inspect, null, 2)}</pre>
               )}
             </div>
           )}

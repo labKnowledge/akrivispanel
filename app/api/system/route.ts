@@ -2,6 +2,29 @@ import { NextRequest, NextResponse } from 'next/server';
 import os from 'os';
 import { execSync } from 'child_process';
 
+// Helper to calculate CPU usage over a short interval
+async function getCpuUsage() {
+  function cpuInfo() {
+    const cpus = os.cpus();
+    let user = 0, nice = 0, sys = 0, idle = 0, irq = 0;
+    for (const cpu of cpus) {
+      user += cpu.times.user;
+      nice += cpu.times.nice;
+      sys += cpu.times.sys;
+      idle += cpu.times.idle;
+      irq += cpu.times.irq;
+    }
+    return { user, nice, sys, idle, irq };
+  }
+  const start = cpuInfo();
+  await new Promise((res) => setTimeout(res, 200)); // 200ms sample
+  const end = cpuInfo();
+  const idleDiff = end.idle - start.idle;
+  const totalDiff = (end.user - start.user) + (end.nice - start.nice) + (end.sys - start.sys) + idleDiff + (end.irq - start.irq);
+  const usagePercent = totalDiff === 0 ? 0 : (1 - idleDiff / totalDiff) * 100;
+  return { usedPercent: usagePercent.toFixed(1) };
+}
+
 export async function GET(req: NextRequest) {
   try {
     // Memory
@@ -44,7 +67,10 @@ export async function GET(req: NextRequest) {
     });
     const network = { interfaces: Object.keys(nets).filter((n) => n !== 'lo'), count: rx };
 
-    return NextResponse.json({ memUsage, disk, network });
+    // CPU
+    const cpu = await getCpuUsage();
+
+    return NextResponse.json({ memUsage, disk, network, cpu });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

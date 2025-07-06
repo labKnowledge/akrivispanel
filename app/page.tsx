@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import React from "react";
 
 interface ContainerInfo {
   Id: string;
@@ -28,6 +29,9 @@ interface SystemInfo {
   network: {
     interfaces: string[];
     count: number;
+  };
+  cpu?: {
+    usedPercent: string | number;
   };
 }
 
@@ -67,6 +71,99 @@ function cleanName(name: string): string {
   // Remove slashes, underscores, dashes, and special characters, trim spaces
   return name.replace(/[\/_-]+/g, ' ').replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
 }
+
+// Memoized Card Components
+const MemoryCard = React.memo(function MemoryCard({ used, total, usedPercent, loading }: { used: number, total: number, usedPercent: number, loading: boolean }) {
+  return (
+    <div className="relative bg-gradient-to-br from-blue-50 to-white rounded-xl shadow-lg p-5 flex flex-col items-center border-t-4 border-blue-500 hover:shadow-xl transition-all duration-200">
+      <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-blue-500 rounded-full p-2 shadow-lg">
+        {/* Memory Icon */}
+        <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="white"><rect x="4" y="7" width="16" height="10" rx="2" strokeWidth="2"/><path strokeWidth="2" d="M8 7V5m8 2V5M8 17v2m8-2v2"/></svg>
+      </div>
+      <div className="mt-6 text-blue-700 font-bold text-lg mb-1">Memory</div>
+      {loading ? (
+        <div className="text-gray-400">Loading...</div>
+      ) : (
+        <>
+          <div className="text-2xl font-extrabold mb-1">{formatBytes(used)}</div>
+          <div className="text-xs text-gray-500 mb-1">of {formatBytes(total)}</div>
+          <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden mb-1">
+            <div className="h-full bg-blue-500 transition-all duration-500" style={{ width: `${usedPercent}%`, transition: 'width 0.5s' }}></div>
+          </div>
+          <div className="text-xs text-blue-600 font-semibold">{usedPercent.toFixed(1)}% used</div>
+        </>
+      )}
+    </div>
+  );
+});
+
+const CpuCard = React.memo(function CpuCard({ usedPercent, loading }: { usedPercent: number, loading: boolean }) {
+  return (
+    <div className="relative bg-gradient-to-br from-red-50 to-white rounded-xl shadow-lg p-5 flex flex-col items-center border-t-4 border-red-500 hover:shadow-xl transition-all duration-200">
+      <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-red-500 rounded-full p-2 shadow-lg">
+        {/* CPU Icon */}
+        <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="white"><rect x="4" y="4" width="16" height="16" rx="3" strokeWidth="2"/><path strokeWidth="2" d="M9 9h6v6H9z"/></svg>
+      </div>
+      <div className="mt-6 text-red-700 font-bold text-lg mb-1">CPU</div>
+      {loading ? (
+        <div className="text-gray-400">Loading...</div>
+      ) : (
+        <>
+          <div className="text-2xl font-extrabold mb-1">{usedPercent.toFixed(1)}%</div>
+          <div className="w-full h-2 bg-red-100 rounded-full overflow-hidden mb-1">
+            <div className="h-full bg-red-500 transition-all duration-500" style={{ width: `${usedPercent}%`, transition: 'width 0.5s' }}></div>
+          </div>
+          <div className="text-xs text-red-600 font-semibold">CPU Usage</div>
+        </>
+      )}
+    </div>
+  );
+});
+
+const DiskCard = React.memo(function DiskCard({ used, total, usedPercent, loading }: { used: number, total: number, usedPercent: number, loading: boolean }) {
+  return (
+    <div className="relative bg-gradient-to-br from-purple-50 to-white rounded-xl shadow-lg p-5 flex flex-col items-center border-t-4 border-purple-500 hover:shadow-xl transition-all duration-200">
+      <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-purple-500 rounded-full p-2 shadow-lg">
+        {/* Disk Icon */}
+        <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="white"><circle cx="12" cy="12" r="9" strokeWidth="2"/><circle cx="12" cy="12" r="3" strokeWidth="2"/><path strokeWidth="2" d="M12 3v3m0 12v3m9-9h-3M6 12H3"/></svg>
+      </div>
+      <div className="mt-6 text-purple-700 font-bold text-lg mb-1">Disk</div>
+      {loading ? (
+        <div className="text-gray-400">Loading...</div>
+      ) : (
+        <>
+          <div className="text-2xl font-extrabold mb-1">{formatBytes(used)}</div>
+          <div className="text-xs text-gray-500 mb-1">of {formatBytes(total)}</div>
+          <div className="w-full h-2 bg-purple-100 rounded-full overflow-hidden mb-1">
+            <div className="h-full bg-purple-500 transition-all duration-500" style={{ width: `${usedPercent}%`, transition: 'width 0.5s' }}></div>
+          </div>
+          <div className="text-xs text-purple-600 font-semibold">{usedPercent}% used</div>
+        </>
+      )}
+    </div>
+  );
+});
+
+const NetworkCard = React.memo(function NetworkCard({ interfaces, count, loading }: { interfaces: string[], count: number, loading: boolean }) {
+  return (
+    <div className="relative bg-gradient-to-br from-green-50 to-white rounded-xl shadow-lg p-5 flex flex-col items-center border-t-4 border-green-500 hover:shadow-xl transition-all duration-200">
+      <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-green-500 rounded-full p-2 shadow-lg">
+        {/* Network Icon */}
+        <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="white"><circle cx="12" cy="12" r="9" strokeWidth="2"/><path strokeWidth="2" d="M8 12h8M12 8v8"/></svg>
+      </div>
+      <div className="mt-6 text-green-700 font-bold text-lg mb-1">Network</div>
+      {loading ? (
+        <div className="text-gray-400">Loading...</div>
+      ) : (
+        <>
+          <div className="text-2xl font-extrabold mb-1">{count}</div>
+          <div className="text-xs text-gray-500 mb-1">active interfaces</div>
+          <div className="text-xs text-gray-400 mt-1 text-center break-words max-w-[90%]">{interfaces.join(", ")}</div>
+        </>
+      )}
+    </div>
+  );
+});
 
 export default function Home() {
   const [containers, setContainers] = useState<ContainerInfo[]>([]);
@@ -133,9 +230,44 @@ export default function Home() {
     }
   };
 
+  // Poll system info every 2 seconds, but only update state if data changed
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    let mounted = true;
+    const pollSystem = async () => {
+      try {
+        const res = await fetch("/api/system");
+        const data = await res.json();
+        if (!mounted) return;
+        setSystem(prev => {
+          // Only update if data changed
+          if (
+            !prev ||
+            JSON.stringify(prev.memUsage) !== JSON.stringify(data.memUsage) ||
+            JSON.stringify(prev.disk) !== JSON.stringify(data.disk) ||
+            JSON.stringify(prev.cpu) !== JSON.stringify(data.cpu) ||
+            JSON.stringify(prev.network) !== JSON.stringify(data.network)
+          ) {
+            return data;
+          }
+          return prev;
+        });
+      } catch {
+        if (mounted) setSystem(null);
+      } finally {
+        if (mounted) setSystemLoading(false);
+      }
+    };
+    pollSystem(); // initial fetch
+    interval = setInterval(pollSystem, 2000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
   useEffect(() => {
     fetchContainers();
-    fetchSystem();
     fetchImages();
   }, []);
 
@@ -198,64 +330,28 @@ export default function Home() {
         
 
         {/* System Info Cards */}
-        <section className="w-full max-w-6xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6 ">
-          {/* Memory Card */}
-          <div className="relative bg-gradient-to-br from-blue-50 to-white rounded-xl shadow-lg p-5 flex flex-col items-center border-t-4 border-blue-500 hover:shadow-xl transition-all duration-200">
-            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-blue-500 rounded-full p-2 shadow-lg">
-              {/* Memory Icon */}
-              <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="white"><rect x="4" y="7" width="16" height="10" rx="2" strokeWidth="2"/><path strokeWidth="2" d="M8 7V5m8 2V5M8 17v2m8-2v2"/></svg>
-            </div>
-            <div className="mt-6 text-blue-700 font-bold text-lg mb-1">Memory</div>
-            {systemLoading ? (
-              <div className="text-gray-400">Loading...</div>
-            ) : system && system.memUsage ? (
-              <>
-                <div className="text-2xl font-extrabold mb-1">{formatBytes(system.memUsage.used)}</div>
-                <div className="text-xs text-gray-500 mb-1">of {formatBytes(system.memUsage.total)}</div>
-                <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden mb-1">
-                  <div className="h-full bg-blue-500" style={{ width: `${system.memUsage.usedPercent}%` }}></div>
-                </div>
-                <div className="text-xs text-blue-600 font-semibold">{system.memUsage.usedPercent.toFixed(1)}% used</div>
-              </>
-            ) : <div className="text-red-400">N/A</div>}
-          </div>
-          {/* Disk Card */}
-          <div className="relative bg-gradient-to-br from-purple-50 to-white rounded-xl shadow-lg p-5 flex flex-col items-center border-t-4 border-purple-500 hover:shadow-xl transition-all duration-200">
-            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-purple-500 rounded-full p-2 shadow-lg">
-              {/* Disk Icon */}
-              <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="white"><circle cx="12" cy="12" r="9" strokeWidth="2"/><circle cx="12" cy="12" r="3" strokeWidth="2"/><path strokeWidth="2" d="M12 3v3m0 12v3m9-9h-3M6 12H3"/></svg>
-            </div>
-            <div className="mt-6 text-purple-700 font-bold text-lg mb-1">Disk</div>
-            {systemLoading ? (
-              <div className="text-gray-400">Loading...</div>
-            ) : system && system.disk ? (
-              <>
-                <div className="text-2xl font-extrabold mb-1">{formatBytes(system.disk.used)}</div>
-                <div className="text-xs text-gray-500 mb-1">of {formatBytes(system.disk.total)}</div>
-                <div className="w-full h-2 bg-purple-100 rounded-full overflow-hidden mb-1">
-                  <div className="h-full bg-purple-500" style={{ width: `${system.disk.usedPercent}%` }}></div>
-                </div>
-                <div className="text-xs text-purple-600 font-semibold">{system.disk.usedPercent}% used</div>
-              </>
-            ) : <div className="text-red-400">N/A</div>}
-          </div>
-          {/* Network Card */}
-          <div className="relative bg-gradient-to-br from-green-50 to-white rounded-xl shadow-lg p-5 flex flex-col items-center border-t-4 border-green-500 hover:shadow-xl transition-all duration-200">
-            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-green-500 rounded-full p-2 shadow-lg">
-              {/* Network Icon */}
-              <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="white"><circle cx="12" cy="12" r="9" strokeWidth="2"/><path strokeWidth="2" d="M8 12h8M12 8v8"/></svg>
-            </div>
-            <div className="mt-6 text-green-700 font-bold text-lg mb-1">Network</div>
-            {systemLoading ? (
-              <div className="text-gray-400">Loading...</div>
-            ) : system && system.network ? (
-              <>
-                <div className="text-2xl font-extrabold mb-1">{system.network.interfaces.length}</div>
-                <div className="text-xs text-gray-500 mb-1">active interfaces</div>
-                <div className="text-xs text-gray-400 mt-1 text-center break-words max-w-[90%]">{system.network.interfaces.join(", ")}</div>
-              </>
-            ) : <div className="text-red-400">N/A</div>}
-          </div>
+        <section className="w-full max-w-6xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6 ">
+          <MemoryCard
+            used={system?.memUsage?.used || 0}
+            total={system?.memUsage?.total || 0}
+            usedPercent={system?.memUsage?.usedPercent || 0}
+            loading={systemLoading}
+          />
+          <CpuCard
+            usedPercent={parseFloat(system?.cpu?.usedPercent as string) || 0}
+            loading={systemLoading}
+          />
+          <DiskCard
+            used={system?.disk?.used || 0}
+            total={system?.disk?.total || 0}
+            usedPercent={system?.disk?.usedPercent || 0}
+            loading={systemLoading}
+          />
+          <NetworkCard
+            interfaces={system?.network?.interfaces || []}
+            count={system?.network?.count || 0}
+            loading={systemLoading}
+          />
         </section>
 
         {/* Main Content */}
