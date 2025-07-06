@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import dynamic from 'next/dynamic';
 
 interface ContainerInfo {
   Id: string;
@@ -28,19 +29,33 @@ function getCategoryColor(category: string): string {
   return "bg-blue-100 text-blue-700";
 }
 
+function formatBytes(bytes: number) {
+  if (typeof bytes !== 'number' || isNaN(bytes)) return 'N/A';
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+const ContainerTerminal = dynamic(() => import('./Terminal'), { ssr: false });
+
 export default function ContainerDetailsPage() {
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const [container, setContainer] = useState<ContainerInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<'overview' | 'logs' | 'inspect'>('overview');
+  const [tab, setTab] = useState<'overview' | 'logs' | 'inspect' | 'terminal'>('overview');
   const [logs, setLogs] = useState<string>("");
   const [logsLoading, setLogsLoading] = useState(false);
   const [logsError, setLogsError] = useState<string | null>(null);
   const [inspect, setInspect] = useState<any>(null);
   const [inspectLoading, setInspectLoading] = useState(false);
   const [inspectError, setInspectError] = useState<string | null>(null);
+  const [stats, setStats] = useState<any>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsError, setStatsError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchContainer() {
@@ -81,9 +96,9 @@ export default function ContainerDetailsPage() {
     }
   }, [tab, id]);
 
-  // Fetch inspect
+  // Fetch inspect and stats for overview
   useEffect(() => {
-    if (tab === 'inspect' && id) {
+    if (tab === 'overview' && id) {
       setInspectLoading(true);
       setInspectError(null);
       fetch(`/api/docker/containers/${id}/inspect`)
@@ -94,6 +109,16 @@ export default function ContainerDetailsPage() {
         })
         .catch(err => setInspectError(err.message || "Unknown error"))
         .finally(() => setInspectLoading(false));
+      setStatsLoading(true);
+      setStatsError(null);
+      fetch(`/api/docker/containers/${id}/stats`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.cpu !== undefined) setStats(data);
+          else setStatsError(data.error || "Failed to fetch stats");
+        })
+        .catch(err => setStatsError(err.message || "Unknown error"))
+        .finally(() => setStatsLoading(false));
     }
   }, [tab, id]);
 
@@ -112,6 +137,7 @@ export default function ContainerDetailsPage() {
           <button className={`px-3 py-1 font-medium rounded-t ${tab === 'overview' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100 text-gray-600'}`} onClick={() => setTab('overview')}>Overview</button>
           <button className={`px-3 py-1 font-medium rounded-t ${tab === 'logs' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100 text-gray-600'}`} onClick={() => setTab('logs')}>Logs</button>
           <button className={`px-3 py-1 font-medium rounded-t ${tab === 'inspect' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100 text-gray-600'}`} onClick={() => setTab('inspect')}>Inspect</button>
+          <button className={`px-3 py-1 font-medium rounded-t ${tab === 'terminal' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100 text-gray-600'}`} onClick={() => setTab('terminal')}>Terminal</button>
         </div>
         {/* Tab Content */}
         <div className="flex-1 overflow-auto">
@@ -123,6 +149,33 @@ export default function ContainerDetailsPage() {
               <div className="mb-2"><span className="font-semibold text-gray-600">State:</span> <span className="text-gray-800">{container.State}</span></div>
               <div className="mb-2"><span className="font-semibold text-gray-600">Status:</span> <span className="text-gray-800">{container.Status}</span></div>
               <div className="mb-2"><span className="font-semibold text-gray-600">ID:</span> <span className="text-gray-800">{container.Id}</span></div>
+              {/* URL (Port Mapping) */}
+              {inspect && inspect.NetworkSettings && inspect.NetworkSettings.Ports && Object.keys(inspect.NetworkSettings.Ports).length > 0 && (
+                (() => {
+                  const portEntry = Object.entries(inspect.NetworkSettings.Ports).find(([, v]) => Array.isArray(v) && v.length > 0 && v[0].HostPort);
+                  if (portEntry) {
+                    const [containerPort, arrRaw] = portEntry;
+                    const arr = arrRaw as any[];
+                    const hostPort = arr[0].HostPort;
+                    return (
+                      <div className="mb-2">
+                        <span className="font-semibold text-gray-600">URL:</span> <a href={`http://127.0.0.1:${hostPort}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline ml-1">http://127.0.0.1:{hostPort}</a>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()
+              )}
+              {/* CPU, Memory, Storage Usage */}
+              <div className="mb-2">
+                <span className="font-semibold text-gray-600">CPU Usage:</span> <span className="text-gray-800">{statsLoading ? 'Loading...' : statsError ? statsError : stats ? stats.cpu.toFixed(2) + ' %' : 'N/A'}</span>
+              </div>
+              <div className="mb-2">
+                <span className="font-semibold text-gray-600">Memory Usage:</span> <span className="text-gray-800">{statsLoading ? 'Loading...' : statsError ? statsError : stats ? `${formatBytes(stats.memory.usage)} / ${formatBytes(stats.memory.limit)} (${stats.memory.percent.toFixed(2)}%)` : 'N/A'}</span>
+              </div>
+              <div className="mb-2">
+                <span className="font-semibold text-gray-600">Storage Usage:</span> <span className="text-gray-800">{inspect && (inspect.SizeRootFs !== undefined || inspect.SizeRw !== undefined) ? `RootFs: ${formatBytes(inspect.SizeRootFs)} | RW: ${formatBytes(inspect.SizeRw)}` : 'N/A'}</span>
+              </div>
             </div>
           )}
           {tab === 'logs' && (
@@ -145,6 +198,11 @@ export default function ContainerDetailsPage() {
               ) : (
                 <pre className="w-full max-w-7xl max-h-150 bg-gray-900 overflow-y-auto text-green-100 rounded p-4  text-xs whitespace-pre-wrap break-words overflow-x-auto">{JSON.stringify(inspect, null, 2)}</pre>
               )}
+            </div>
+          )}
+          {tab === 'terminal' && (
+            <div className="mt-2" style={{ minHeight: 350 }}>
+              <ContainerTerminal containerId={container.Id} />
             </div>
           )}
         </div>

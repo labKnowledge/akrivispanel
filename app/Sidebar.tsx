@@ -52,6 +52,14 @@ export default function Sidebar() {
           </span>
           Images
         </button>
+        <button className={`py-2 px-4 rounded justify-start hover:bg-blue-50 font-medium flex items-center text-left ${pathname.startsWith("/images/deploy") ? "bg-blue-100 text-blue-700" : ""}`} onClick={() => handleNav("Deploy Image", "/images/deploy")}>
+          <span className="inline-block w-4 h-4 mr-2">
+            <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          </span>
+          Deploy
+        </button>
         <button className={`py-2 px-4 rounded justify-start hover:bg-blue-50 font-medium flex items-center text-left ${pathname.startsWith("/volumes") ? "bg-blue-100 text-blue-700" : ""}`} onClick={() => handleNav("Volumes", "/volumes")}>
           <span className="inline-block w-4 h-4 mr-2">
             <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -60,7 +68,9 @@ export default function Sidebar() {
           </span>
           Volumes
         </button>
-        <button className="py-2 px-4 rounded justify-start hover:bg-blue-50 flex items-center text-left" onClick={() => handleNav("Settings", "#")}>
+        
+      </nav>
+      <button className="mt-auto pt-10 py-2 px-4 rounded justify-start hover:bg-blue-50 flex items-center text-left" onClick={() => handleNav("Settings", "#")}>
           <span className="inline-block w-4 h-4 mr-2">
             <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6 0a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -68,8 +78,7 @@ export default function Sidebar() {
           </span>
           Settings
         </button>
-      </nav>
-      <div className="mt-auto pt-10 text-xs text-gray-400">&copy; {new Date().getFullYear()} FastPanel</div>
+      <div className=" text-xs text-gray-400">&copy; {new Date().getFullYear()} FastPanel</div>
     </aside>
   );
 } 
