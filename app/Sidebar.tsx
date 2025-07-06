@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAppContext } from "./context/AppContext";
+import Logo from "./Logo";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -15,7 +16,7 @@ export default function Sidebar() {
   return (
     <aside className="hidden md:flex flex-col w-64 h-screen bg-white shadow-lg p-6 fixed left-0 top-0 z-20">
       <div className="mb-10 flex items-center gap-2">
-        <span className="inline-block w-8 h-8 bg-blue-600 rounded-full text-white flex items-center justify-center font-bold text-xl">FP</span>
+        <Logo size={40} />
         <span className="text-xl font-bold text-blue-700 tracking-tight">FastPanel</span>
       </div>
       <nav className="flex flex-col gap-2 text-gray-700">
