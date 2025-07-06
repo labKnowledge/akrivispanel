@@ -12,6 +12,7 @@ export default function Sidebar() {
       </div>
       <nav className="flex flex-col gap-2 text-gray-700">
         <Link href="/" className={`py-2 px-4 rounded hover:bg-blue-50 font-medium ${pathname === "/" ? "bg-blue-100 text-blue-700" : ""}`}>Dashboard</Link>
+        <Link href="/monitoring" className={`py-2 px-4 rounded hover:bg-blue-50 font-medium ${pathname.startsWith("/monitor") ? "bg-blue-100 text-blue-700" : ""}`}>Monitoring</Link>
         <Link href="/containers" className={`py-2 px-4 rounded hover:bg-blue-50 font-medium ${pathname.startsWith("/containers") ? "bg-blue-100 text-blue-700" : ""}`}>Containers</Link>
         <Link href="/images" className={`py-2 px-4 rounded hover:bg-blue-50 font-medium ${( pathname.startsWith("/images")) ? "bg-blue-100 text-blue-700" : ""}`}>Images</Link>
         <Link href="/volumes" className={`py-2 px-4 rounded hover:bg-blue-50 font-medium ${pathname.startsWith("/volumes") ? "bg-blue-100 text-blue-700" : ""}`}>Volumes</Link>
