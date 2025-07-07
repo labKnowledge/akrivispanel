@@ -1,10 +1,10 @@
 import { NextRequest } from 'next/server';
-import { cloneRepo, detectBuildType, buildImage } from '../../../../../lib/deployment/githubDeploy';
+import { cloneRepo, detectBuildType, buildImage, runImage } from '../../../../../lib/deployment/githubDeploy';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  const { repoUrl, branch = 'main', buildType, env } = await req.json();
+  const { repoUrl, branch = 'main', buildType, env, ports } = await req.json();
 
   const encoder = new TextEncoder();
   let controller: ReadableStreamDefaultController<any>;
@@ -54,18 +54,40 @@ export async function POST(req: NextRequest) {
           const imageTag = `${repoName.toLowerCase().replace(/[^a-zA-Z0-9_.-]/g, '')}:latest`;
 
           await emit('Building Docker image...');
-          const buildResult = await buildImage(repoPath, detectedBuildType, imageTag);
-          for (const log of buildResult.logs) {
+          let buildSuccess = false;
+          await buildImage(repoPath, detectedBuildType, imageTag, async (log) => {
             await emit(log);
-          }
-          if (!buildResult.success) {
-            await emit(`Build failed: ${buildResult.output}`);
+          }).then((buildResult) => {
+            buildSuccess = buildResult.success;
+            if (!buildResult.success) {
+              emit(`Build failed: ${buildResult.output}`);
+            }
+          });
+          if (!buildSuccess) {
             controller.close();
             return;
           }
           await emit('Image built successfully.');
           await emit(`Image tag: ${imageTag}`);
-          await emit('Deployment complete!');
+
+          // Run the image and stream logs
+          await emit('Running Docker container...');
+          try {
+            const { containerId, waitPromise } = await runImage(
+              imageTag,
+              env,
+              ports,
+              async (log) => {
+                await emit(log);
+              }
+            );
+            await emit(`Container started: ${containerId}`);
+            await waitPromise;
+            await emit('Container stopped.');
+            await emit('Deployment complete!');
+          } catch (err: any) {
+            await emit(`Failed to run container: ${err.message}`);
+          }
           controller.close();
         } catch (err: any) {
           await emit(`Error: ${err.message}`);
