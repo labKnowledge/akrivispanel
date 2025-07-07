@@ -87,7 +87,8 @@ export async function deployFromGitHub({ repoUrl, branch = 'main', buildType, en
   // Extract repo name for image tag
   let repoName = 'repo';
   try {
-    // Remove trailing .git if present and split by '/'
+    // Extract the last path segment (repo or space name) for both GitHub and Hugging Face URLs
+    // Handles .../repo.git, .../repo, .../spaces/user/space, etc.
     const match = repoUrl.match(/([^/]+)(?:\.git)?$/);
     if (match && match[1]) {
       repoName = match[1].replace(/[^a-zA-Z0-9_.-]/g, ''); // sanitize for docker tag

@@ -97,15 +97,18 @@ export default function GithubDeploymentPage() {
     <div className="w-full max-w-8xl mx-auto">
       <form className="space-y-4 bg-white shadow rounded p-6" onSubmit={handleSubmit}>
         <div>
-          <label className="block font-medium mb-1">GitHub Repository URL<span className="text-red-500">*</span></label>
+          <label className="block font-medium mb-1">Repository URL<span className="text-red-500">*</span></label>
           <input
             type="text"
             className="w-full border rounded px-3 py-2"
             value={repoUrl}
             onChange={e => setRepoUrl(e.target.value)}
             required
-            placeholder="https://github.com/user/repo.git"
+            placeholder="https://github.com/user/repo.git or https://huggingface.co/spaces/user/space"
           />
+          <div className="text-xs text-gray-500 mt-1">
+            Supports GitHub, Hugging Face Spaces, and any public Git provider. Paste the full URL (no .git required for Hugging Face).
+          </div>
         </div>
         <div>
           <label className="block font-medium mb-1">Branch</label>

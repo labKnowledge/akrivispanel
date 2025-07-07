@@ -158,7 +158,7 @@ const NetworkCard = React.memo(function NetworkCard({ interfaces, count, loading
         <>
           <div className="text-2xl font-extrabold mb-1">{count}</div>
           <div className="text-xs text-gray-500 mb-1">active interfaces</div>
-          <div className="text-xs text-gray-400 mt-1 text-center break-words max-w-[90%]">{interfaces.join(", ")}</div>
+          {/* <div className="text-xs text-gray-400 mt-1 text-center break-words max-w-[90%]">{interfaces.join(", ")}</div> */}
         </>
       )}
     </div>

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { cloneRepo, detectBuildType, buildImage } from '../../../../lib/deployment/githubDeploy';
+import { cloneRepo, detectBuildType, buildImage } from '../../../../../lib/deployment/githubDeploy';
 
 export const dynamic = 'force-dynamic';
 
