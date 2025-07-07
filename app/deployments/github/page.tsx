@@ -46,7 +46,7 @@ export default function GithubDeploymentPage() {
       if (key) envObj[key] = value;
     });
     try {
-      const res = await fetch('/api/deployments/github', {
+      const res = await fetch('/api/deployments/github/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -56,17 +56,39 @@ export default function GithubDeploymentPage() {
           env: envObj,
         }),
       });
-      const data = await res.json();
-      if (!res.ok || data.status === 'error') {
-        setError(data.message || 'Deployment failed');
-        setBuildLogs(data.buildLogs || []);
-      } else {
-        setResult(data);
-        setBuildLogs(data.buildLogs || []);
+      if (!res.body) throw new Error('No response body');
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let logs: string[] = [];
+      let done = false;
+      let errorMsg = null;
+      while (!done) {
+        const { value, done: streamDone } = await reader.read();
+        done = streamDone;
+        if (value) {
+          const chunk = decoder.decode(value);
+          // SSE: lines start with 'data: '
+          chunk.split(/\n/).forEach(line => {
+            if (line.startsWith('data: ')) {
+              const logLine = line.replace('data: ', '');
+              logs.push(logLine);
+              setBuildLogs([...logs]);
+              if (logLine.toLowerCase().includes('failed') || logLine.toLowerCase().startsWith('error:')) {
+                errorMsg = logLine;
+              }
+            }
+          });
+        }
       }
+      setLoading(false);
+      if (errorMsg) {
+        setError(errorMsg);
+      } else {
+        setError(null);
+      }
+      // Optionally, parse the final image tag from logs and setResult if needed
     } catch (err: any) {
       setError(err.message || 'Unknown error');
-    } finally {
       setLoading(false);
     }
   };

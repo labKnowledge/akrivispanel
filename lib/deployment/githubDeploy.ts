@@ -125,4 +125,6 @@ export async function deployFromGitHub({ repoUrl, branch = 'main', buildType, en
       }
     }
   };
-} 
+}
+
+export { cloneRepo, detectBuildType, buildImage }; 
