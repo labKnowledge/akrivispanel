@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Swal from "sweetalert2";
 
 interface DockerImage {
   Id: string;
@@ -37,6 +38,38 @@ export default function ImagesPage() {
       setImagesError(err.message || "Unknown error");
     } finally {
       setImagesLoading(false);
+    }
+  };
+
+  // Add delete image logic
+  const handleDelete = async (img: DockerImage) => {
+    const repoTag = img.RepoTags && img.RepoTags.length > 0 ? img.RepoTags[0] : undefined;
+    const id = img.Id;
+    const result = await Swal.fire({
+      title: "Delete Image?",
+      text: `Are you sure you want to delete this image? ${repoTag || id}`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, delete it!",
+    });
+    if (!result.isConfirmed) return;
+    try {
+      const res = await fetch("/api/docker/images", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, repoTag }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        await Swal.fire("Error", data.error || "Failed to delete image", "error");
+      } else {
+        await Swal.fire("Deleted!", "Image has been deleted.", "success");
+        fetchImages();
+      }
+    } catch (err: any) {
+      await Swal.fire("Error", err.message || "Unknown error", "error");
     }
   };
 
@@ -77,7 +110,15 @@ export default function ImagesPage() {
           {images.map((img) => (
             <div key={img.Id} className="relative flex flex-col bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border-t-4 border-gradient-to-r from-blue-400 to-blue-600 p-6 hover:scale-[1.03] hover:shadow-2xl transition-all duration-200 min-h-[140px] group">
               {/* Menu Icon */}
-              <button className="absolute top-4 right-4 text-gray-400 hover:text-blue-500 transition"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="6" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="18" r="1.5"/></svg></button>
+              <button
+                className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition"
+                title="Delete Image"
+                onClick={() => handleDelete(img)}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
               <div className="flex items-center gap-2 mb-3">
                 <svg className="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect x="3" y="7" width="18" height="10" rx="2" strokeWidth="2"/><path strokeWidth="2" d="M7 7V5m10 2V5M7 17v2m10-2v2"/></svg>
                 <span className="text-xl font-bold text-gray-800 truncate max-w-[120px]" title={img.RepoTags?.join(", ") || "<none>"}>{img.RepoTags?.[0] || "<none>"}</span>

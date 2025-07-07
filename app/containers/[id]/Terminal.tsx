@@ -1,68 +1,60 @@
-import { useEffect, useRef } from 'react';
-import { Terminal } from 'xterm';
-import { FitAddon } from 'xterm-addon-fit';
-import 'xterm/css/xterm.css';
+import { useState } from 'react';
 
 interface ContainerTerminalProps {
   containerId: string;
 }
 
 export default function ContainerTerminal({ containerId }: ContainerTerminalProps) {
-  const xtermRef = useRef<HTMLDivElement>(null);
-  const termRef = useRef<Terminal | null>(null);
-  const fitAddonRef = useRef<FitAddon | null>(null);
-  const socketRef = useRef<WebSocket | null>(null);
+  const [command, setCommand] = useState('');
+  const [output, setOutput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!xtermRef.current) return;
-    const term = new Terminal({
-      cursorBlink: true,
-      fontSize: 14,
-      theme: {
-        background: '#1a1a1a',
-        foreground: '#00ff00',
-      },
-    });
-    const fitAddon = new FitAddon();
-    term.loadAddon(fitAddon);
-    term.open(xtermRef.current);
-    fitAddon.fit();
-    term.focus();
-    termRef.current = term;
-    fitAddonRef.current = fitAddon;
-
-    // Resize on window resize
-    const handleResize = () => {
-      fitAddon.fit();
-    };
-    window.addEventListener('resize', handleResize);
-
-    // Connect to backend websocket
-    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const socket = new WebSocket(`${protocol}://${window.location.host}/ws/terminal/${containerId}`);
-    socketRef.current = socket;
-
-    term.onData(data => {
-      socket.send(JSON.stringify({ type: 'input', data }));
-    });
-
-    socket.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
-      if (msg.type === 'output') {
-        term.write(msg.data);
+  const runCommand = async () => {
+    setLoading(true);
+    setError(null);
+    setOutput('');
+    try {
+      const res = await fetch(`/api/docker/containers/${containerId}/exec`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setOutput(data.output);
+      } else {
+        setError(data.error || 'Failed to execute command');
       }
-    };
+    } catch (err: any) {
+      setError(err.message || 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    socket.onclose = () => {
-      term.write('\r\n\x1b[31m[Disconnected]\x1b[0m');
-    };
-
-    return () => {
-      term.dispose();
-      socket.close();
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [containerId]);
-
-  return <div ref={xtermRef} style={{ width: '100%', height: '100%', minHeight: 350, background: '#1a1a1a', borderRadius: 8 }} />;
+  return (
+    <div style={{ width: '100%', minHeight: 350, background: '#1a1a1a', borderRadius: 8, padding: 16 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <input
+          type="text"
+          value={command}
+          onChange={e => setCommand(e.target.value)}
+          placeholder="Enter command (e.g. ls -al)"
+          style={{ flex: 1, padding: 8, borderRadius: 4, border: '1px solid #333', background: '#222', color: '#0f0' }}
+          onKeyDown={e => { if (e.key === 'Enter') runCommand(); }}
+          disabled={loading}
+        />
+        <button
+          onClick={runCommand}
+          disabled={loading || !command.trim()}
+          style={{ padding: '8px 16px', borderRadius: 4, background: '#2563eb', color: '#fff', border: 'none', fontWeight: 'bold' }}
+        >
+          {loading ? 'Running...' : 'Run'}
+        </button>
+      </div>
+      {error && <div style={{ color: '#f55', marginBottom: 8 }}>{error}</div>}
+      <pre style={{ background: '#111', color: '#0f0', borderRadius: 4, padding: 12, minHeight: 200, overflowX: 'auto' }}>{output}</pre>
+    </div>
+  );
 } 
