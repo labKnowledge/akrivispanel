@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 interface BuildResponse {
   status: string;
@@ -20,10 +20,19 @@ export default function GithubDeploymentPage() {
   const [branch, setBranch] = useState('main');
   const [buildType, setBuildType] = useState<'auto' | 'dockerfile' | 'compose'>('auto');
   const [envVars, setEnvVars] = useState([{ key: '', value: '' }]);
+  const [portBindings, setPortBindings] = useState([{ host: '', container: '' }]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [buildLogs, setBuildLogs] = useState<string[]>([]);
   const [result, setResult] = useState<BuildResponse | null>(null);
+  const [containerId, setContainerId] = useState<string | null>(null);
+  const logEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (logEndRef.current) {
+      logEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [buildLogs]);
 
   const handleEnvChange = (idx: number, field: 'key' | 'value', value: string) => {
     const newVars = [...envVars];
@@ -33,6 +42,15 @@ export default function GithubDeploymentPage() {
 
   const addEnvVar = () => setEnvVars([...envVars, { key: '', value: '' }]);
   const removeEnvVar = (idx: number) => setEnvVars(envVars.filter((_, i) => i !== idx));
+
+  const handlePortChange = (idx: number, field: 'host' | 'container', value: string) => {
+    const newPorts = [...portBindings];
+    newPorts[idx][field] = value;
+    setPortBindings(newPorts);
+  };
+
+  const addPortBinding = () => setPortBindings([...portBindings, { host: '', container: '' }]);
+  const removePortBinding = (idx: number) => setPortBindings(portBindings.filter((_, i) => i !== idx));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +63,11 @@ export default function GithubDeploymentPage() {
     envVars.forEach(({ key, value }) => {
       if (key) envObj[key] = value;
     });
+    // Prepare ports as object
+    const portsObj: Record<string, number> = {};
+    portBindings.forEach(({ host, container }) => {
+      if (host && container) portsObj[`${container}/tcp`] = Number(host);
+    });
     try {
       const res = await fetch('/api/deployments/github/stream', {
         method: 'POST',
@@ -54,6 +77,7 @@ export default function GithubDeploymentPage() {
           branch,
           buildType: buildType === 'auto' ? undefined : buildType,
           env: envObj,
+          ports: Object.keys(portsObj).length ? portsObj : undefined,
         }),
       });
       if (!res.body) throw new Error('No response body');
@@ -73,6 +97,11 @@ export default function GithubDeploymentPage() {
               const logLine = line.replace('data: ', '');
               logs.push(logLine);
               setBuildLogs([...logs]);
+              // Parse container ID
+              if (logLine.startsWith('Container started: ')) {
+                const id = logLine.replace('Container started: ', '').trim();
+                setContainerId(id);
+              }
               if (logLine.toLowerCase().includes('failed') || logLine.toLowerCase().startsWith('error:')) {
                 errorMsg = logLine;
               }
@@ -155,6 +184,34 @@ export default function GithubDeploymentPage() {
           ))}
           <button type="button" className="text-blue-600 text-sm mt-1" onClick={addEnvVar}>+ Add Variable</button>
         </div>
+        <div>
+          <label className="block font-medium mb-1">Port Bindings</label>
+          {portBindings.map((port, idx) => (
+            <div className="flex gap-2 mb-2" key={idx}>
+              <input
+                type="number"
+                className="border rounded px-2 py-1 w-32"
+                placeholder="Host Port"
+                value={port.host}
+                onChange={e => handlePortChange(idx, 'host', e.target.value)}
+                min={1}
+                max={65535}
+              />
+              <span className="self-center">→</span>
+              <input
+                type="number"
+                className="border rounded px-2 py-1 w-32"
+                placeholder="Container Port"
+                value={port.container}
+                onChange={e => handlePortChange(idx, 'container', e.target.value)}
+                min={1}
+                max={65535}
+              />
+              <button type="button" className="text-red-500 px-2" onClick={() => removePortBinding(idx)} title="Remove">&times;</button>
+            </div>
+          ))}
+          <button type="button" className="text-blue-600 text-sm mt-1" onClick={addPortBinding}>+ Add Port Binding</button>
+        </div>
         <button
           type="submit"
           className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 rounded shadow disabled:opacity-60"
@@ -169,8 +226,17 @@ export default function GithubDeploymentPage() {
             {buildLogs.map((line, i) => (
               <div key={i}>{line}</div>
             ))}
+            <div ref={logEndRef} />
           </div>
           {error && <div className="text-red-500 mt-2">{error}</div>}
+          {containerId && buildLogs.some(l => l.toLowerCase().includes('deployment complete')) && (
+            <button
+              className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded shadow"
+              onClick={() => window.location.href = `/containers/${containerId}`}
+            >
+              Go to Deployed Container
+            </button>
+          )}
         </div>
       )}
       {result && result.status === 'success' && (

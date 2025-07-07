@@ -4,7 +4,7 @@ import Docker from 'dockerode';
 const docker = new Docker();
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  const { id } = params;
+  const { id } = await params;
   try {
     const container = docker.getContainer(id);
     await container.remove({ force: true });
