@@ -7,19 +7,64 @@ const docker = new Docker();
 const execAsync = util.promisify(exec);
 
 async function getContainerInspectWithSize(id: string) {
-  return new Promise<any>((resolve, reject) => {
-    docker.modem.dial(
-      {
-        path: `/containers/${id}/json?size=true`,
-        method: 'GET',
-      },
-      (err: any, data: any) => {
-        if (err) return reject(err);
-        resolve(data);
-      }
-    );
-  });
+  const container = docker.getContainer(id);
+  const inspect = await container.inspect();
+  const stats = await container.stats({ stream: false });
+  return { inspect, stats };
+  // return new Promise<any>((resolve, reject) => {
+  //   container.modem.dial(
+  //     {
+  //       path: `/containers/${id}/json?size=true`,
+  //       method: 'GET',
+  //     },
+  //     (err: any, data: any) => {
+  //       if (err) return reject(err);
+  //       resolve(data);
+  //     }
+  //   );
+  // });
 }
+
+async function getContainerSize(containerId: string) {
+  try {
+    const { stdout } = await execAsync(`docker ps --size --filter "id=${containerId}"`);
+    const sizeLine = stdout.split('\n').find(line => line.includes('Size:'));
+    if (sizeLine) {
+      const sizeMatch = sizeLine.match(/Size:\s+(\d+(\.\d+)?\s+\w+)/);
+      if (sizeMatch) {
+        return sizeMatch[1];
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error(`Failed to get size for container ${containerId}:`, error);
+    return null;
+  }
+}
+
+async function getContainerDetails(containerId: string) {
+  try {
+    const { stdout } = await execAsync(`docker inspect ${containerId}`);
+    const containerInfo = JSON.parse(stdout)[0];
+
+    const { Id, Image, Name, Command, Created, Ports } = containerInfo;
+    const size = await getContainerSize(containerId);
+
+    return {
+      containerID: Id,
+      image: Image,
+      name: Name,
+      command: Command,
+      size: size,
+      created: Created,
+      port: Ports,
+    };
+  } catch (error) {
+    console.error(`Failed to get details for container ${containerId}:`, error);
+    return null;
+  }
+}
+
 
 async function getStorageData() {
   let images: any[] = [];
@@ -46,15 +91,15 @@ async function getStorageData() {
     containers = await Promise.all(
       containersRaw.map(async (c) => {
         try {
-          const inspect = await getContainerInspectWithSize(c.Id);
+          const inspect = await getContainerDetails(c.Id);
           return {
             Id: c.Id,
             Names: c.Names,
             Image: c.Image,
             State: c.State,
             Status: c.Status,
-            SizeRootFs: inspect.SizeRootFs ?? null,
-            SizeRw: inspect.SizeRw ?? null,
+            SizeRootFs: inspect?.size,
+            SizeRw: inspect?.size,
           };
         } catch (e: any) {
           return {
