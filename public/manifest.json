@@ -1,6 +1,6 @@
 {
-  "name": "FastPanel",
-  "short_name": "FastPanel",
+  "name": "AkrivisPanel",
+  "short_name": "AkrivisPanel",
   "description": "A modern, premium dashboard for managing your infrastructure.",
   "start_url": "/",
   "display": "standalone",

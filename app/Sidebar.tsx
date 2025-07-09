@@ -17,7 +17,7 @@ export default function Sidebar() {
     <aside className="hidden md:flex flex-col w-64 h-screen bg-white shadow-lg p-6 fixed left-0 top-0 z-20">
       <div className="mb-10 flex items-center gap-2">
         <Logo size={40} />
-        <span className="text-xl font-bold text-blue-700 tracking-tight">FastPanel</span>
+        <span className="text-xl font-bold text-blue-700 tracking-tight">AkrivisPanel</span>
       </div>
       <nav className="flex flex-col gap-2 text-gray-700">
         <button className={`py-2 px-4 rounded justify-start hover:bg-blue-50 font-medium flex items-center text-left ${pathname === "/" ? "bg-blue-100 text-blue-700" : ""}`} onClick={() => handleNav("Dashboard", "/")}>
@@ -84,7 +84,7 @@ export default function Sidebar() {
           </span>
           Settings
         </button>
-      <div className=" text-xs text-gray-400">&copy; {new Date().getFullYear()} FastPanel</div>
+      <div className=" text-xs text-gray-400">&copy; {new Date().getFullYear()} AkrivisPanel</div>
     </aside>
   );
 } 

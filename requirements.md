@@ -1,8 +1,8 @@
-Here’s a clear and concise requirements document for **FastPanel**, covering the problem, solution, and step-by-step plan for building it with Next.js and Docker integration.
+Here’s a clear and concise requirements document for **AkrivisPanel**, covering the problem, solution, and step-by-step plan for building it with Next.js and Docker integration.
 
 ---
 
-# FastPanel Requirements Document
+# AkrivisPanel Requirements Document
 
 ## 1. Problem Statement
 
@@ -17,7 +17,7 @@ Deploying and managing applications with Docker is powerful but often complex fo
 
 ## 2. Solution Overview
 
-**FastPanel** is a modern, open-source web panel that simplifies Docker-based application deployment and management. It provides:
+**AkrivisPanel** is a modern, open-source web panel that simplifies Docker-based application deployment and management. It provides:
 
 - **Unified Web UI:** Manage containers, images, volumes, and networks visually.
 - **One-Click Deployments:** Launch applications from templates or custom Dockerfiles/Compose files.
@@ -27,7 +27,7 @@ Deploying and managing applications with Docker is powerful but often complex fo
 
 ---
 
-## 3. Step-by-Step Plan to Build FastPanel
+## 3. Step-by-Step Plan to Build AkrivisPanel
 
 ### Step 1: Project Initialization
 - Scaffold a Next.js project (for unified frontend and backend).
@@ -64,7 +64,7 @@ Deploying and managing applications with Docker is powerful but often complex fo
 - Add user authentication (e.g., NextAuth.js) for multi-user environments.
 
 ### Step 8: Packaging & Deployment
-- Create a Dockerfile for FastPanel itself.
+- Create a Dockerfile for AkrivisPanel itself.
 - Document installation and usage.
 - (Optional) Add plugin system for extensibility.
 

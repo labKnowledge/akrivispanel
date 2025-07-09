@@ -1,12 +1,12 @@
 import React from "react";
 import Image from "next/image";
 
-// Professional, premium SaaS logo for FastPanel
+// Professional, premium SaaS logo for AkrivisPanel
 export default function Logo({ size = 40 }: { size?: number }) {
   return (
     <Image
-      src="/fastpanel-logo.svg"
-      alt="FastPanel Logo"
+      src="/akrivispanel-logo.svg"
+      alt="AkrivisPanel Logo"
       width={size}
       height={size}
       priority

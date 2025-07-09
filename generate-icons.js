@@ -2,7 +2,7 @@ const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
 
-const src = path.join(__dirname, 'public', 'fastpanel-logo.svg');
+const src = path.join(__dirname, 'public', 'akrivispanel-logo.svg');
 const outDir = path.join(__dirname, 'public', 'icons');
 if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 
