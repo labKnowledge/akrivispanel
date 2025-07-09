@@ -232,37 +232,38 @@ export default function Home() {
 
   // Poll system info every 2 seconds, but only update state if data changed
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let es: EventSource | null = null;
     let mounted = true;
-    const pollSystem = async () => {
-      try {
-        const res = await fetch("/api/system");
-        const data = await res.json();
+    if (typeof window !== 'undefined') {
+      es = new window.EventSource('/api/system/stream');
+      es.onmessage = (event) => {
         if (!mounted) return;
-        setSystem(prev => {
-          // Only update if data changed
-          if (
-            !prev ||
-            JSON.stringify(prev.memUsage) !== JSON.stringify(data.memUsage) ||
-            JSON.stringify(prev.disk) !== JSON.stringify(data.disk) ||
-            JSON.stringify(prev.cpu) !== JSON.stringify(data.cpu) ||
-            JSON.stringify(prev.network) !== JSON.stringify(data.network)
-          ) {
-            return data;
-          }
-          return prev;
-        });
-      } catch {
-        if (mounted) setSystem(null);
-      } finally {
-        if (mounted) setSystemLoading(false);
-      }
-    };
-    pollSystem(); // initial fetch
-    interval = setInterval(pollSystem, 2000);
+        try {
+          const data = JSON.parse(event.data);
+          setSystem(prev => {
+            if (
+              !prev ||
+              JSON.stringify(prev.memUsage) !== JSON.stringify(data.memUsage) ||
+              JSON.stringify(prev.disk) !== JSON.stringify(data.disk) ||
+              JSON.stringify(prev.cpu) !== JSON.stringify(data.cpu) ||
+              JSON.stringify(prev.network) !== JSON.stringify(data.network)
+            ) {
+              return data;
+            }
+            return prev;
+          });
+          setSystemLoading(false);
+        } catch {
+          // ignore
+        }
+      };
+      es.onerror = () => {
+        es?.close();
+      };
+    }
     return () => {
       mounted = false;
-      clearInterval(interval);
+      if (es) es.close();
     };
   }, []);
 

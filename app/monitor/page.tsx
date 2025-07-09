@@ -32,12 +32,65 @@ function formatBytes(bytes: number) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+function StorageBar({ value, max, color = 'bg-blue-400' }: { value: number, max: number, color?: string }) {
+  const width = max > 0 ? Math.max(2, (value / max) * 100) : 0;
+  return (
+    <div className="w-full h-3 bg-gray-100 rounded">
+      <div className={`h-3 rounded ${color}`} style={{ width: `${width}%` }} />
+    </div>
+  );
+}
+
+function StorageBarChart({ data, labelKey, valueKey, color }: { data: any[], labelKey: string, valueKey: string, color: string }) {
+  if (!data || data.length === 0) return <div className="text-gray-400 text-sm">No data.</div>;
+  const max = Math.max(...data.map((item) => item[valueKey] || 0), 1);
+  return (
+    <div className="space-y-3">
+      {data
+        .sort((a, b) => (b[valueKey] || 0) - (a[valueKey] || 0))
+        .map((item, idx) => {
+          const value = item[valueKey] || 0;
+          const width = max > 0 ? Math.max(4, (value / max) * 100) : 0;
+          return (
+            <div key={item.Id || item.Name || idx} className="flex items-center gap-3">
+              <span className="w-36 truncate text-sm font-medium text-gray-700" title={item[labelKey]}>{item[labelKey]}</span>
+              <div className="flex-1 h-5 bg-gray-100 rounded-full relative overflow-hidden">
+                <div
+                  className={`h-5 rounded-full transition-all duration-300 ${color}`}
+                  style={{ width: `${width}%` }}
+                />
+                <span className="absolute right-3 top-0 h-5 flex items-center text-xs font-semibold text-gray-700">
+                  {formatBytes(value)}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+    </div>
+  );
+}
+
+function LiveIndicator() {
+  return (
+    <span className="inline-flex items-center gap-1 ml-2">
+      <span className="relative flex h-2 w-2">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+      </span>
+      <span className="text-xs text-green-600 font-semibold">Live</span>
+    </span>
+  );
+}
+
 export default function MonitoringPage() {
   const [tab, setTab] = useState<'containers' | 'storage'>('containers');
   const [containers, setContainers] = useState<ContainerInfo[]>([]);
-  const [stats, setStats] = useState<Record<string, ContainerStats | null>>({});
   const [loading, setLoading] = useState(true);
-  // Remove workerRef
+  const [storageData, setStorageData] = useState<any>(null);
+  const [storageLoading, setStorageLoading] = useState(false);
+  const [storageError, setStorageError] = useState<string | null>(null);
+  const [showBackendErrors, setShowBackendErrors] = useState(true);
+  const storageEventSourceRef = useRef<EventSource | null>(null);
 
   // Fetch containers once for initial load (optional, can be removed if SSE is fast enough)
   useEffect(() => {
@@ -54,7 +107,7 @@ export default function MonitoringPage() {
     setLoading(false);
     if (typeof window === 'undefined') return;
     // For local testing, use the full URL to port 3001. Revert to relative path for production.
-    const es = new window.EventSource('http://localhost:3001/api/docker/containers/stream');
+    const es = new window.EventSource('/api/docker/containers/stream');
     es.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
@@ -70,6 +123,36 @@ export default function MonitoringPage() {
     };
     return () => {
       es.close();
+    };
+  }, [tab]);
+
+  // Real-time streaming for storage tab
+  useEffect(() => {
+    if (tab !== 'storage') return;
+    setStorageLoading(true);
+    setStorageError(null);
+    setStorageData(null);
+    setShowBackendErrors(true);
+    if (typeof window === 'undefined') return;
+    const es = new window.EventSource('/api/docker/storage-distribution/stream');
+    storageEventSourceRef.current = es;
+    es.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        setStorageData(data);
+        setStorageLoading(false);
+      } catch (e) {
+        // ignore
+      }
+    };
+    es.addEventListener('error', (event: any) => {
+      setStorageError('Failed to fetch storage data (stream error)');
+      setStorageLoading(false);
+      es.close();
+    });
+    return () => {
+      es.close();
+      storageEventSourceRef.current = null;
     };
   }, [tab]);
 
@@ -124,9 +207,85 @@ export default function MonitoringPage() {
           </div>
         )}
         {tab === 'storage' && (
-          <div className="bg-white rounded-xl shadow p-8 text-center text-gray-500">
-            <div className="text-lg font-semibold mb-2">Storage Distribution</div>
-            <div>Coming soon: Visualize storage usage by container, volume, and image.</div>
+          <div className="bg-white rounded-xl shadow p-8 text-gray-700">
+            <div className="flex items-center mb-6">
+              <div className="text-2xl font-bold text-blue-800">Storage Distribution</div>
+              {!storageLoading && !storageError && <LiveIndicator />}
+            </div>
+            {storageLoading ? (
+              <div className="text-center text-gray-500 py-8">Loading storage data...</div>
+            ) : storageError ? (
+              <div className="text-center text-red-600 py-8 font-semibold bg-red-50 rounded-lg border border-red-200">{storageError}</div>
+            ) : !storageData ? (
+              <div className="text-center text-gray-500 py-8">No storage data found.</div>
+            ) : (
+              <>
+                {/* Backend errors from stream */}
+                {showBackendErrors && storageData.errors && storageData.errors.length > 0 && (
+                  <div className="mb-4">
+                    <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg px-4 py-2 flex items-center justify-between">
+                      <div>
+                        <b>Backend warnings:</b> {storageData.errors.join('; ')}
+                      </div>
+                      <button className="ml-4 text-yellow-700 hover:underline text-xs" onClick={() => setShowBackendErrors(false)}>Dismiss</button>
+                    </div>
+                  </div>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  {/* Images */}
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl shadow p-6 flex flex-col">
+                    <div className="text-blue-700 font-semibold text-lg mb-4 flex items-center gap-2">
+                      <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect x="3" y="7" width="18" height="10" rx="2" strokeWidth="2"/><path strokeWidth="2" d="M7 7V5m10 2V5M7 17v2m10-2v2"/></svg>
+                      Images
+                    </div>
+                    {storageData.images && storageData.images.length > 0 ? (
+                      <StorageBarChart
+                        data={storageData.images.map((img: any) => ({ ...img, label: img.RepoTags?.[0] || '<none>' }))}
+                        labelKey="label"
+                        valueKey="Size"
+                        color="bg-blue-400"
+                      />
+                    ) : (
+                      <div className="text-gray-400 text-sm">No data.</div>
+                    )}
+                  </div>
+                  {/* Volumes */}
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl shadow p-6 flex flex-col">
+                    <div className="text-green-700 font-semibold text-lg mb-4 flex items-center gap-2">
+                      <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect x="4" y="7" width="16" height="10" rx="2" strokeWidth="2"/><path strokeWidth="2" d="M8 7V5m8 2V5M8 17v2m8-2v2"/></svg>
+                      Volumes
+                    </div>
+                    {storageData.volumes && storageData.volumes.length > 0 ? (
+                      <StorageBarChart
+                        data={storageData.volumes.map((vol: any) => ({ ...vol, label: vol.Name, Size: vol.size || 0 }))}
+                        labelKey="label"
+                        valueKey="Size"
+                        color="bg-green-400"
+                      />
+                    ) : (
+                      <div className="text-gray-400 text-sm">No data.</div>
+                    )}
+                  </div>
+                  {/* Containers */}
+                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl shadow p-6 flex flex-col">
+                    <div className="text-purple-700 font-semibold text-lg mb-4 flex items-center gap-2">
+                      <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect x="3" y="7" width="18" height="10" rx="2" strokeWidth="2"/><path strokeWidth="2" d="M7 7V5m10 2V5M7 17v2m10-2v2"/></svg>
+                      Containers
+                    </div>
+                    {storageData.containers && storageData.containers.length > 0 ? (
+                      <StorageBarChart
+                        data={storageData.containers.map((c: any) => ({ ...c, label: c.Names?.[0]?.replace(/^\/\//, '') || c.Id.slice(0, 12), Size: (c.SizeRootFs || 0) + (c.SizeRw || 0) }))}
+                        labelKey="label"
+                        valueKey="Size"
+                        color="bg-purple-400"
+                      />
+                    ) : (
+                      <div className="text-gray-400 text-sm">No data.</div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

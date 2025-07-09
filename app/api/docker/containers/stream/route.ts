@@ -3,55 +3,16 @@ import Docker from 'dockerode';
 
 const docker = new Docker();
 
-// export async function GET(req: NextRequest) {
-//   const encoder = new TextEncoder();
-//   let interval: NodeJS.Timeout;
-//   let stopped = false;
-
-//   const stream = new ReadableStream({
-//     async start(controller) {
-//       async function sendStats() {
-//         if (stopped) return;
-//         try {
-//           const containers = await docker.listContainers({ all: true });
-//           const data = JSON.stringify({ containers });
-//           controller.enqueue(encoder.encode(`data: ${data}\n\n`));
-//         } catch (err: any) {
-//           controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: err.message })}\n\n`));
-//         }
-//       }
-//       // Send initial data
-//       await sendStats();
-//       // Send updates every 2 seconds
-//       interval = setInterval(sendStats, 2000);
-//     },
-//     cancel() {
-//       stopped = true;
-//       if (interval) clearInterval(interval);
-//     },
-//   });
-
-//   return new Response(stream, {
-//     headers: {
-//       'Content-Type': 'text/event-stream',
-//       'Cache-Control': 'no-cache',
-//       'Connection': 'keep-alive',
-//     },
-//   });
-// } 
-
-
-
-
 export async function GET(req: NextRequest) {
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const encoder = new TextEncoder();
-  const docker = new Docker();
 
   let interval: NodeJS.Timeout;
+  let stopped = false;
 
   async function sendStats() {
+    if (stopped) return;
     try {
       const containers = await docker.listContainers({ all: true });
       // Fetch and parse stats for each container
@@ -106,10 +67,24 @@ export async function GET(req: NextRequest) {
         };
       }));
       const data = `data: ${JSON.stringify({ containers: containersWithStats })}\n\n`;
-      await writer.write(encoder.encode(data));
+      try {
+        await writer.write(encoder.encode(data));
+      } catch (err) {
+        // Writer likely closed (client disconnected)
+        stopped = true;
+        clearInterval(interval);
+        writer.close();
+      }
     } catch (err: any) {
       const errorData = `event: error\ndata: ${JSON.stringify({ error: err.message })}\n\n`;
-      await writer.write(encoder.encode(errorData));
+      try {
+        await writer.write(encoder.encode(errorData));
+      } catch {
+        // Writer likely closed
+      }
+      stopped = true;
+      clearInterval(interval);
+      writer.close();
     }
   }
 
@@ -119,6 +94,7 @@ export async function GET(req: NextRequest) {
 
   // Cleanup on connection close
   req.signal.addEventListener('abort', () => {
+    stopped = true;
     clearInterval(interval);
     writer.close();
   });
