@@ -1,8 +1,5 @@
-import { NextApiRequest } from 'next';
-import { WebSocketServer, WebSocket } from 'ws';
+import { NextRequest } from 'next/server';
 import Docker from 'dockerode';
-import pty from 'node-pty';
-import { IncomingMessage } from 'http';
 
 const docker = new Docker();
 
@@ -12,49 +9,55 @@ export const config = {
   },
 };
 
-export default function handler(req: NextApiRequest, res: any) {
-  if (res.socket.server.ws) {
-    res.end();
-    return;
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  if (!id) {
+    return new Response('Missing container ID', { status: 400 });
   }
 
-  const wss = new WebSocketServer({ server: res.socket.server });
-  res.socket.server.ws = wss;
-
-  wss.on('connection', async (socket: WebSocket, req: IncomingMessage) => {
-    // Extract container ID from URL
-    const urlParts = req.url!.split('/');
-    const idIndex = urlParts.findIndex((p: string) => p === 'containers') + 2;
-    const containerId = urlParts[idIndex];
-    if (!containerId) {
-      socket.close();
-      return;
-    }
-    const container = docker.getContainer(containerId);
-    // Start a shell in the container
-    const exec = await container.exec({
-      Cmd: ['/bin/sh'],
-      AttachStdin: true,
-      AttachStdout: true,
-      AttachStderr: true,
-      Tty: true,
-    });
-    const stream = await exec.start({ hijack: true, stdin: true });
-
-    socket.on('message', (msg: string) => {
+  const stream = new ReadableStream({
+    async start(controller) {
+      const container = docker.getContainer(id);
+      let exec;
       try {
-        const { type, data } = JSON.parse(msg);
-        if (type === 'input') {
-          stream.write(data);
-        }
-      } catch {}
-    });
-
-    stream.on('data', (data: Buffer) => {
-      socket.send(JSON.stringify({ type: 'output', data: data.toString('utf-8') }));
-    });
-    stream.on('end', () => socket.close());
-    socket.on('close', () => stream.end());
+        exec = await container.exec({
+          Cmd: ['/bin/sh'],
+          AttachStdin: true,
+          AttachStdout: true,
+          AttachStderr: true,
+          Tty: true,
+        });
+      } catch (err) {
+        controller.enqueue(`event: error\ndata: Failed to start shell: ${err}\n\n`);
+        controller.close();
+        return;
+      }
+      let dockerStream;
+      try {
+        dockerStream = await exec.start({ hijack: true, stdin: true });
+      } catch (err) {
+        controller.enqueue(`event: error\ndata: Failed to start exec: ${err}\n\n`);
+        controller.close();
+        return;
+      }
+      dockerStream.on('data', (data: Buffer) => {
+        controller.enqueue(`data: ${data.toString('utf-8').replace(/\n/g, '\ndata: ')}\n\n`);
+      });
+      dockerStream.on('end', () => {
+        controller.enqueue('event: end\ndata: Shell session ended\n\n');
+        controller.close();
+      });
+    },
+    cancel() {
+      // Optionally handle stream cancellation
+    },
   });
-  res.end();
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    },
+  });
 } 

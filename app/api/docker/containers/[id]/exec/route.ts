@@ -3,8 +3,8 @@ import Docker from 'dockerode';
 
 const docker = new Docker();
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const { command } = await req.json();
   try {
     const container = docker.getContainer(id);

@@ -4,8 +4,8 @@ import { stopAndRemoveContainer } from '../../../../../../lib/deployment/githubD
 
 const docker = new Docker();
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     const { ports } = await req.json(); // { '8080/tcp': 3000, ... }
     if (!ports || typeof ports !== 'object') {

@@ -22,15 +22,15 @@ interface ContainerStats {
 
 let containers: ContainerInfo[] = [];
 let interval: number | null = null;
-let origin: string = '';
+let originUrl = '';
 
 async function pollStats() {
-  if (!containers.length || !origin) return;
+  if (!containers.length || !originUrl) return;
   const newStats: Record<string, ContainerStats | null> = {};
   await Promise.all(
     containers.map(async (c) => {
       try {
-        const res = await fetch(`${origin}/api/docker/containers/${c.Id}/stats`);
+        const res = await fetch(`${originUrl}/api/docker/containers/${c.Id}/stats`);
         const data = await res.json();
         newStats[c.Id] = data;
       } catch {
@@ -59,7 +59,7 @@ self.onmessage = (e) => {
   const { type, containers: newContainers, origin: newOrigin } = e.data;
   if (type === 'start') {
     containers = newContainers || [];
-    origin = newOrigin || '';
+    originUrl = newOrigin || '';
     startPolling();
   } else if (type === 'stop') {
     stopPolling();

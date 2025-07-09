@@ -6,8 +6,9 @@ interface ContainerInfo {
   Id: string;
   Names: string[];
   Image: string;
-  State: string;
-  Status: string;
+  Status: string; // keep as Status, but map from status
+  Ports: any[];
+  stats: ContainerStats; // <-- lowercase 'stats'
 }
 
 interface ContainerStats {
@@ -36,49 +37,41 @@ export default function MonitoringPage() {
   const [containers, setContainers] = useState<ContainerInfo[]>([]);
   const [stats, setStats] = useState<Record<string, ContainerStats | null>>({});
   const [loading, setLoading] = useState(true);
-  const workerRef = useRef<Worker | null>(null);
+  // Remove workerRef
 
-  // Fetch containers once
+  // Fetch containers once for initial load (optional, can be removed if SSE is fast enough)
   useEffect(() => {
-    const fetchContainers = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch('/api/docker/containers');
-        const data = await res.json();
-        setContainers(data.containers || []);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchContainers();
+    setLoading(true);
+    fetch('/api/docker/containers')
+      .then((res) => res.json())
+      .then((data) => setContainers(data.containers || []))
+      .finally(() => setLoading(false));
   }, []);
 
-  // Use Web Worker for polling stats
+  // SSE for real-time container updates
   useEffect(() => {
-    if (tab !== 'containers') {
-      // Stop worker if not on containers tab
-      if (workerRef.current) {
-        workerRef.current.postMessage({ type: 'stop' });
-      }
-      return;
-    }
+    if (tab !== 'containers') return;
+    setLoading(false);
     if (typeof window === 'undefined') return;
-    // Dynamically import worker
-    // @ts-ignore
-    const worker = new Worker(new URL('./containerStatsWorker.ts', import.meta.url), { type: 'module' });
-    workerRef.current = worker;
-    worker.onmessage = (e) => {
-      if (e.data && e.data.type === 'stats') {
-        setStats(e.data.stats);
+    // For local testing, use the full URL to port 3001. Revert to relative path for production.
+    const es = new window.EventSource('http://localhost:3001/api/docker/containers/stream');
+    es.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        // Map backend fields to frontend expected fields
+        setContainers((data.containers)
+        );
+      } catch (e) {
+        // ignore
       }
     };
-    worker.postMessage({ type: 'start', containers, origin: window.location.origin });
-    return () => {
-      worker.postMessage({ type: 'stop' });
-      worker.terminate();
-      workerRef.current = null;
+    es.onerror = () => {
+      es.close();
     };
-  }, [containers, tab]);
+    return () => {
+      es.close();
+    };
+  }, [tab]);
 
   return (
     <div className="w-full min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 items-center">
@@ -89,7 +82,8 @@ export default function MonitoringPage() {
         </div>
         {tab === 'containers' && (
           <div className="overflow-x-auto bg-white rounded-xl shadow p-4">
-            {loading ? (
+            {
+            loading ? (
               <div className="text-center text-gray-500 py-8">Loading containers...</div>
             ) : containers.length === 0 ? (
               <div className="text-center text-gray-500 py-8">No containers found.</div>
@@ -109,19 +103,18 @@ export default function MonitoringPage() {
                 </thead>
                 <tbody>
                   {containers.map((c) => {
-                    const s = stats[c.Id];
                     return (
                       <tr key={c.Id} className="border-b hover:bg-blue-50 transition">
                         <td className="py-2 px-2 font-semibold text-blue-700">
                           <Link href={`/containers/${c.Id}`}>{c.Names[0]?.replace(/^\//, '') || c.Id.slice(0, 12)}</Link>
                         </td>
                         <td className="py-2 px-2">{c.Image}</td>
-                        <td className="py-2 px-2">{c.State}</td>
-                        <td className="py-2 px-2">{s ? s.cpu.toFixed(2) + ' %' : '—'}</td>
-                        <td className="py-2 px-2">{s ? s.memory.percent.toFixed(2) + ' %' : '—'}</td>
-                        <td className="py-2 px-2">{s ? formatBytes(s.memory.usage) + ' / ' + formatBytes(s.memory.limit) : '—'}</td>
-                        <td className="py-2 px-2">{s ? formatBytes(s.network.rx) : '—'}</td>
-                        <td className="py-2 px-2">{s ? formatBytes(s.network.tx) : '—'}</td>
+                        <td className="py-2 px-2">{c.Status.includes('Up') ? 'Running' : 'Stopped'}</td>
+                        <td className="py-2 px-2">{c.stats ? c.stats.cpu.toFixed(2) + ' %' : '—'}</td>
+                        <td className="py-2 px-2">{c.stats ? c.stats.memory.percent.toFixed(2) + ' %' : '—'}</td>
+                        <td className="py-2 px-2">{c.stats ? formatBytes(c.stats.memory.usage) + ' / ' + formatBytes(c.stats.memory.limit) : '—'}</td>
+                        <td className="py-2 px-2">{c.stats ? formatBytes(c.stats.network.rx) : '—'}</td>
+                        <td className="py-2 px-2">{c.stats ? formatBytes(c.stats.network.tx) : '—'}</td>
                       </tr>
                     );
                   })}

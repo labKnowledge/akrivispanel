@@ -3,8 +3,8 @@ import Docker from 'dockerode';
 
 const docker = new Docker();
 
-export async function GET(req: NextRequest, context: { params: { id: string } }) {
-  const { id } = await context.params;
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     const container = docker.getContainer(id);
     // Get a single stats snapshot (stream: false)
