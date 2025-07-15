@@ -30,8 +30,17 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon.png" />
+        <link
+          rel="apple-touch-icon"
+          sizes="180x180"
+          href="/icons/apple-touch-icon.png"
+        />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="32x32"
+          href="/icons/favicon.png"
+        />
         <link rel="icon" href="/icons/favicon.png" />
         <meta name="theme-color" content="#2563eb" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -40,15 +49,20 @@ export default function RootLayout({
         <meta name="application-name" content="AkrivisPanel" />
         <meta name="apple-mobile-web-app-title" content="AkrivisPanel" />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
         <AppProvider>
-          <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex">
+          <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 md:flex">
             <Sidebar />
-            <div className="flex-1 flex flex-col min-h-screen ml-0 md:ml-64 bg-transparent w-full">
+            <div className="flex-1 flex flex-col min-h-screen bg-transparent w-full">
               <Header />
-              <main className="w-full flex-1 flex flex-col space-between">{children}</main>
+              <main className="w-full flex-1 flex flex-col space-between">
+                {children}
+              </main>
               <footer className="bg-white shadow py-3 px-8 text-center text-gray-400 text-sm mt-8 w-full">
-                AkrivisPanel &copy; {new Date().getFullYear()} &mdash; Powered by Eligapris
+                AkrivisPanel &copy; {new Date().getFullYear()} &mdash; Powered
+                by Eligapris
               </footer>
             </div>
           </div>

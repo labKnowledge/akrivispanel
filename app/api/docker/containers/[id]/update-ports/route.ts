@@ -1,25 +1,32 @@
-import { NextRequest, NextResponse } from 'next/server';
-import Docker from 'dockerode';
-import { stopAndRemoveContainer } from '../../../../../../lib/deployment/githubDeploy';
+import { NextRequest, NextResponse } from "next/server";
+import Docker from "dockerode";
+import { stopAndRemoveContainer } from "../../../../../../lib/deployment/githubDeploy";
 
 const docker = new Docker();
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const { id } = await params;
   try {
     const { ports } = await req.json(); // { '8080/tcp': 3000, ... }
-    if (!ports || typeof ports !== 'object') {
-      return NextResponse.json({ error: 'Missing or invalid ports object' }, { status: 400 });
+    if (!ports || typeof ports !== "object") {
+      return NextResponse.json(
+        { error: "Missing or invalid ports object" },
+        { status: 400 },
+      );
     }
     const container = docker.getContainer(id);
     const inspect = await container.inspect();
     const image = inspect.Config.Image;
     const env = inspect.Config.Env;
-    const name = inspect.Name?.replace(/^\//, '');
-    const volumes = inspect.Mounts?.map((m: any) => `${m.Source}:${m.Destination}`) || [];
+    const name = inspect.Name?.replace(/^\//, "");
+    const volumes =
+      inspect.Mounts?.map((m: any) => `${m.Source}:${m.Destination}`) || [];
     const cmd = inspect.Config.Cmd;
     const entrypoint = inspect.Config.Entrypoint;
-    const restart = inspect.HostConfig.RestartPolicy?.Name || 'no';
+    const restart = inspect.HostConfig.RestartPolicy?.Name || "no";
 
     // Prepare new port bindings
     const exposedPorts: Record<string, {}> = {};
@@ -39,7 +46,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       Env: env,
       HostConfig: {
         Binds: volumes.length ? volumes : undefined,
-        PortBindings: Object.keys(portBindings).length ? portBindings : undefined,
+        PortBindings: Object.keys(portBindings).length
+          ? portBindings
+          : undefined,
         RestartPolicy: { Name: restart },
       },
       ExposedPorts: Object.keys(exposedPorts).length ? exposedPorts : undefined,
@@ -51,4 +60,4 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-} 
+}

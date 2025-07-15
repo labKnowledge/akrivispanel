@@ -1,5 +1,5 @@
-import { NextRequest } from 'next/server';
-import Docker from 'dockerode';
+import { NextRequest } from "next/server";
+import Docker from "dockerode";
 
 const docker = new Docker();
 
@@ -9,10 +9,13 @@ export const config = {
   },
 };
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const { id } = await params;
   if (!id) {
-    return new Response('Missing container ID', { status: 400 });
+    return new Response("Missing container ID", { status: 400 });
   }
 
   const stream = new ReadableStream({
@@ -21,14 +24,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       let exec;
       try {
         exec = await container.exec({
-          Cmd: ['/bin/sh'],
+          Cmd: ["/bin/sh"],
           AttachStdin: true,
           AttachStdout: true,
           AttachStderr: true,
           Tty: true,
         });
       } catch (err) {
-        controller.enqueue(`event: error\ndata: Failed to start shell: ${err}\n\n`);
+        controller.enqueue(
+          `event: error\ndata: Failed to start shell: ${err}\n\n`,
+        );
         controller.close();
         return;
       }
@@ -36,15 +41,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       try {
         dockerStream = await exec.start({ hijack: true, stdin: true });
       } catch (err) {
-        controller.enqueue(`event: error\ndata: Failed to start exec: ${err}\n\n`);
+        controller.enqueue(
+          `event: error\ndata: Failed to start exec: ${err}\n\n`,
+        );
         controller.close();
         return;
       }
-      dockerStream.on('data', (data: Buffer) => {
-        controller.enqueue(`data: ${data.toString('utf-8').replace(/\n/g, '\ndata: ')}\n\n`);
+      dockerStream.on("data", (data: Buffer) => {
+        controller.enqueue(
+          `data: ${data.toString("utf-8").replace(/\n/g, "\ndata: ")}\n\n`,
+        );
       });
-      dockerStream.on('end', () => {
-        controller.enqueue('event: end\ndata: Shell session ended\n\n');
+      dockerStream.on("end", () => {
+        controller.enqueue("event: end\ndata: Shell session ended\n\n");
         controller.close();
       });
     },
@@ -55,9 +64,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   return new Response(stream, {
     headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
     },
   });
-} 
+}

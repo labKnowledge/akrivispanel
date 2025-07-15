@@ -13,4 +13,4 @@ export default function Logo({ size = 40 }: { size?: number }) {
       style={{ display: "block" }}
     />
   );
-} 
+}

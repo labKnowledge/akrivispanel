@@ -1,7 +1,7 @@
-import { NextRequest } from 'next/server';
-import Docker from 'dockerode';
-import { exec } from 'child_process';
-import util from 'util';
+import { NextRequest } from "next/server";
+import Docker from "dockerode";
+import { exec } from "child_process";
+import util from "util";
 
 const docker = new Docker();
 const execAsync = util.promisify(exec);
@@ -27,8 +27,10 @@ async function getContainerInspectWithSize(id: string) {
 
 async function getContainerSize(containerId: string) {
   try {
-    const { stdout } = await execAsync(`docker ps --size --filter "id=${containerId}"`);
-    const sizeLine = stdout.split('\n').find(line => line.includes('Size:'));
+    const { stdout } = await execAsync(
+      `docker ps --size --filter "id=${containerId}"`,
+    );
+    const sizeLine = stdout.split("\n").find((line) => line.includes("Size:"));
     if (sizeLine) {
       const sizeMatch = sizeLine.match(/Size:\s+(\d+(\.\d+)?\s+\w+)/);
       if (sizeMatch) {
@@ -65,7 +67,6 @@ async function getContainerDetails(containerId: string) {
   }
 }
 
-
 async function getStorageData() {
   let images: any[] = [];
   let containers: any[] = [];
@@ -82,7 +83,7 @@ async function getStorageData() {
       Created: img.Created,
     }));
   } catch (e: any) {
-    errors.push('Failed to fetch images: ' + e.message);
+    errors.push("Failed to fetch images: " + e.message);
   }
 
   // Containers
@@ -113,10 +114,10 @@ async function getStorageData() {
             error: e.message,
           };
         }
-      })
+      }),
     );
   } catch (e: any) {
-    errors.push('Failed to fetch containers: ' + e.message);
+    errors.push("Failed to fetch containers: " + e.message);
   }
 
   // Volumes
@@ -141,10 +142,10 @@ async function getStorageData() {
           size,
           error,
         };
-      })
+      }),
     );
   } catch (e: any) {
-    errors.push('Failed to fetch volumes: ' + e.message);
+    errors.push("Failed to fetch volumes: " + e.message);
   }
 
   return { images, containers, volumes, errors };
@@ -172,7 +173,11 @@ export async function GET(req: NextRequest) {
       }
     } catch (err: any) {
       try {
-        await writer.write(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: err.message })}\n\n`));
+        await writer.write(
+          encoder.encode(
+            `event: error\ndata: ${JSON.stringify({ error: err.message })}\n\n`,
+          ),
+        );
       } catch {
         // Writer likely closed
       }
@@ -187,7 +192,7 @@ export async function GET(req: NextRequest) {
   interval = setInterval(sendStorage, 2000);
 
   // Cleanup on connection close
-  req.signal.addEventListener('abort', () => {
+  req.signal.addEventListener("abort", () => {
     stopped = true;
     clearInterval(interval);
     writer.close();
@@ -195,10 +200,9 @@ export async function GET(req: NextRequest) {
 
   return new Response(readable, {
     headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
     },
   });
-  
-} 
+}

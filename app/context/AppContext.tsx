@@ -12,6 +12,8 @@ interface AppContextType {
   setUser: (user: User | null) => void;
   pageTitle: string;
   setPageTitle: (title: string) => void;
+  sidebarOpen: boolean;
+  setSidebarOpen: (open: boolean) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -19,9 +21,19 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [pageTitle, setPageTitle] = useState<string>("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <AppContext.Provider value={{ user, setUser, pageTitle, setPageTitle }}>
+    <AppContext.Provider
+      value={{
+        user,
+        setUser,
+        pageTitle,
+        setPageTitle,
+        sidebarOpen,
+        setSidebarOpen,
+      }}
+    >
       {children}
     </AppContext.Provider>
   );
@@ -33,4 +45,4 @@ export function useAppContext() {
     throw new Error("useAppContext must be used within an AppProvider");
   }
   return context;
-} 
+}

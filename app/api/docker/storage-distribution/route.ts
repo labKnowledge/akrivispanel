@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import Docker from 'dockerode';
-import { exec } from 'child_process';
-import util from 'util';
+import { NextRequest, NextResponse } from "next/server";
+import Docker from "dockerode";
+import { exec } from "child_process";
+import util from "util";
+import { getSessionUser } from "../../../../lib/auth";
 
 const docker = new Docker();
 const execAsync = util.promisify(exec);
@@ -12,17 +13,20 @@ async function getContainerInspectWithSize(id: string) {
     docker.modem.dial(
       {
         path: `/containers/${id}/json?size=true`,
-        method: 'GET',
+        method: "GET",
       },
       (err: any, data: any) => {
         if (err) return reject(err);
         resolve(data);
-      }
+      },
     );
   });
 }
 
 export async function GET(req: NextRequest) {
+  if (!getSessionUser(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
     // Images
     const images = await docker.listImages();
@@ -54,9 +58,9 @@ export async function GET(req: NextRequest) {
             error: e.message,
           };
         }
-      })
+      }),
     );
-    // Volumes (get size via du)  
+    // Volumes (get size via du)
     const volumesRaw = await docker.listVolumes();
     const volumes = await Promise.all(
       (volumesRaw.Volumes || []).map(async (v: any) => {
@@ -78,7 +82,7 @@ export async function GET(req: NextRequest) {
           size,
           error,
         };
-      })
+      }),
     );
     return NextResponse.json({
       images: images.map((img) => ({
@@ -93,4 +97,4 @@ export async function GET(req: NextRequest) {
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-} 
+}

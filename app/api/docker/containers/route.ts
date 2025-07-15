@@ -1,9 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import Docker from 'dockerode';
+import { NextRequest, NextResponse } from "next/server";
+import Docker from "dockerode";
+import { getSessionUser } from "../../../../lib/auth";
 
 const docker = new Docker();
 
 export async function GET(req: NextRequest) {
+  if (!getSessionUser(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
     const containers = await docker.listContainers({ all: true });
     return NextResponse.json({ containers });
@@ -13,6 +17,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  if (!getSessionUser(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
     const body = await req.json();
     const {
@@ -63,7 +70,7 @@ export async function POST(req: NextRequest) {
                 if (event.id) msg = `[${event.id}] ${msg}`;
                 pullLogs.push(msg);
               }
-            }
+            },
           );
         });
       });
@@ -92,7 +99,9 @@ export async function POST(req: NextRequest) {
 
     // Prepare Cmd/Entrypoint
     const cmdArr = args ? args.split(" ").filter(Boolean) : undefined;
-    const entrypointArr = command ? command.split(" ").filter(Boolean) : undefined;
+    const entrypointArr = command
+      ? command.split(" ").filter(Boolean)
+      : undefined;
 
     // Create container
     const container = await docker.createContainer({
@@ -101,7 +110,9 @@ export async function POST(req: NextRequest) {
       Env: envArr.length ? envArr : undefined,
       HostConfig: {
         Binds: binds.length ? binds : undefined,
-        PortBindings: Object.keys(portBindings).length ? portBindings : undefined,
+        PortBindings: Object.keys(portBindings).length
+          ? portBindings
+          : undefined,
         RestartPolicy: { Name: restart },
       },
       ExposedPorts: Object.keys(exposedPorts).length ? exposedPorts : undefined,
@@ -116,4 +127,4 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-} 
+}
