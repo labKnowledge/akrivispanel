@@ -178,6 +178,29 @@ export default function Sidebar() {
             Deploy
           </button>
           <button
+            className={`py-2 px-4 rounded justify-start hover:bg-blue-50 font-medium flex items-center text-left ${pathname === "/images/deploy" ? "bg-blue-100 text-blue-700" : ""}`}
+            onClick={() => handleNav("Templates", "/images/deploy")}
+          >
+            <span className="inline-block w-4 h-4 mr-2">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="3" y="3" width="7" height="7" />
+                <rect x="14" y="3" width="7" height="7" />
+                <rect x="14" y="14" width="7" height="7" />
+                <rect x="3" y="14" width="7" height="7" />
+              </svg>
+            </span>
+            Templates
+          </button>
+          <button
             className={`py-2 px-4 rounded justify-start hover:bg-blue-50 font-medium flex items-center text-left ${pathname.startsWith("/deployments/github") ? "bg-blue-100 text-blue-700" : ""}`}
             onClick={() =>
               handleNav("GitHub Deployment", "/deployments/github")

@@ -124,7 +124,432 @@ const icons = {
   ),
 };
 
+// Add types for template and ports
+interface TemplatePort {
+  container: string;
+}
+interface TemplateEnvVar {
+  key: string;
+  description?: string;
+  required?: boolean;
+}
+interface TemplateVolume {
+  host: string;
+  container: string;
+  description?: string;
+}
+interface TemplateDef {
+  key: string;
+  name: string;
+  image: string;
+  description: string;
+  ports: TemplatePort[];
+  icon: string;
+  env?: TemplateEnvVar[];
+  volumes?: TemplateVolume[];
+}
+
+// 1. Add a new step at the start for template selection
+const templates: TemplateDef[] = [
+  // Existing templates
+  {
+    key: "n8n",
+    name: "n8n",
+    image: "n8nio/n8n:latest",
+    description: "Open source workflow automation platform.",
+    ports: [{ container: "5678" }],
+    icon: "🤖",
+  },
+  {
+    key: "mongodb",
+    name: "mongodb",
+    image: "mongo:latest",
+    description: "Popular NoSQL document database.",
+    ports: [{ container: "27017" }],
+    icon: "🍃",
+  },
+  {
+    key: "nextcloud",
+    name: "nextcloud",
+    image: "nextcloud:latest",
+    description: "Self-hosted file sync and collaboration platform.",
+    ports: [{ container: "80" }],
+    icon: "☁️",
+  },
+  {
+    key: "homeassistant",
+    name: "homeassistant",
+    image: "homeassistant/home-assistant:latest",
+    description: "Open source home automation platform.",
+    ports: [{ container: "8123" }],
+    icon: "🏠",
+  },
+  {
+    key: "ghost",
+    name: "ghost",
+    image: "ghost:latest",
+    description: "Modern open source publishing platform.",
+    ports: [{ container: "2368" }],
+    icon: "👻",
+  },
+  {
+    key: "bookstack",
+    name: "bookstack",
+    image: "linuxserver/bookstack:latest",
+    description: "Simple self-hosted wiki/documentation platform.",
+    ports: [{ container: "6875" }],
+    icon: "📚",
+  },
+  {
+    key: "roundcube",
+    name: "roundcube",
+    image: "roundcube/roundcubemail:latest",
+    description: "Open source webmail client.",
+    ports: [{ container: "80" }],
+    icon: "📧",
+  },
+  // New MCP/infra templates
+  {
+    key: "postgresql",
+    name: "postgresql",
+    image: "postgres:latest",
+    description: "Advanced open-source SQL database.",
+    ports: [{ container: "5432" }],
+    icon: "🐘",
+  },
+  {
+    key: "mysql",
+    name: "mysql",
+    image: "mysql:latest",
+    description: "Widely-used SQL database.",
+    ports: [{ container: "3306" }],
+    icon: "🐬",
+  },
+  {
+    key: "redis",
+    name: "redis",
+    image: "redis:latest",
+    description: "In-memory data store/cache.",
+    ports: [{ container: "6379" }],
+    icon: "🟥",
+  },
+  {
+    key: "jupyter",
+    name: "jupyter",
+    image: "jupyter/base-notebook:latest",
+    description:
+      "Interactive computing environment for notebooks, code, and data.",
+    ports: [{ container: "8888" }],
+    icon: "📓",
+  },
+  {
+    key: "portainer",
+    name: "portainer",
+    image: "portainer/portainer-ce:latest",
+    description: "Docker management UI.",
+    ports: [{ container: "9000" }],
+    icon: "🛠️",
+  },
+  {
+    key: "gitea",
+    name: "gitea",
+    image: "gitea/gitea:latest",
+    description: "Lightweight self-hosted Git service.",
+    ports: [{ container: "3000" }],
+    icon: "🐙",
+  },
+  {
+    key: "minio",
+    name: "minio",
+    image: "minio/minio:latest",
+    description: "S3-compatible object storage server.",
+    ports: [{ container: "9000" }],
+    icon: "🗄️",
+  },
+  {
+    key: "vault",
+    name: "vault",
+    image: "vault:latest",
+    description: "Secrets management and data protection.",
+    ports: [{ container: "8200" }],
+    icon: "🔐",
+  },
+  {
+    key: "ollama",
+    name: "ollama",
+    image: "ollama/ollama:latest",
+    description: "Local LLM inference server.",
+    ports: [{ container: "11434" }],
+    icon: "🦙",
+  },
+  {
+    key: "unstructured",
+    name: "unstructured",
+    image: "unstructuredio/unstructured:latest",
+    description: "Document parsing and extraction API.",
+    ports: [{ container: "8000" }],
+    icon: "📄",
+  },
+  {
+    key: "notionmcp",
+    name: "notionmcp",
+    image: "notion-mcp/notion-mcp:latest",
+    description: "Notion workspace integration for automations.",
+    ports: [{ container: "8080" }],
+    icon: "🗒️",
+  },
+  {
+    key: "gcalmcp",
+    name: "gcalmcp",
+    image: "gcal-mcp/gcal-mcp:latest",
+    description: "Google Calendar integration for automations.",
+    ports: [{ container: "8080" }],
+    icon: "📅",
+  },
+  {
+    key: "discordmcp",
+    name: "discordmcp",
+    image: "discord-mcp/discord-mcp:latest",
+    description: "Discord bot integration for automations.",
+    ports: [{ container: "8080" }],
+    icon: "💬",
+  },
+  {
+    key: "duckduckgomcp",
+    name: "duckduckgomcp",
+    image: "duckduckgo-mcp/duckduckgo-mcp:latest",
+    description: "Search engine API for automations.",
+    ports: [{ container: "8080" }],
+    icon: "🦆",
+  },
+  // Remove or fix MCP servers with no public image
+  // 1. Notion MCP: No public Docker image, but available via Metorial
+  {
+    key: "notion-mcp",
+    name: "notion-mcp-server",
+    image: "metorial/notion-api-server", // Reference Metorial for deployment
+    description: "Official Notion MCP Server. Deploy via Metorial Marketplace.",
+    ports: [],
+    icon: "🗒️",
+  },
+  // 2. DuckDuckGo MCP: Use maintained fork or Metorial
+  {
+    key: "duckduckgo-mcp",
+    name: "duckduckgo-mcp-server",
+    image: "metorial/duckduckgo-search-server", // Reference Metorial for deployment
+    description:
+      "DuckDuckGo Search MCP Server. Deploy via Metorial Marketplace.",
+    ports: [],
+    icon: "🦆",
+  },
+  // 3. Magic MCP: Use Metorial
+  {
+    key: "magic-mcp",
+    name: "magic-mcp-server",
+    image: "metorial/magic-mcp", // Reference Metorial for deployment
+    description:
+      "Magic MCP Server by 21st.dev. Deploy via Metorial Marketplace.",
+    ports: [],
+    icon: "✨",
+  },
+  // GitHub MCP Server (from docs)
+  {
+    key: "github-mcp-server",
+    name: "github-mcp-server",
+    image: "ghcr.io/labknowledge/github-mcp-server:latest",
+    description:
+      "Official GitHub MCP Server. Provides a standardized interface for interacting with GitHub's API.",
+    ports: [],
+    icon: "🐙",
+    env: [
+      {
+        key: "GITHUB_TOKEN",
+        description: "GitHub personal access token",
+        required: true,
+      },
+    ],
+    volumes: [],
+  },
+  // Notion MCP Server (from docs)
+  {
+    key: "notion-mcp-server",
+    name: "notion-mcp-server",
+    image: "ghcr.io/labknowledge/notion-mcp-server:latest",
+    description:
+      "A Model Context Protocol (MCP) server that provides seamless integration with Notion. Enables LMs to interact with your Notion workspace.",
+    ports: [],
+    icon: "🗒️",
+    env: [
+      {
+        key: "NOTION_TOKEN",
+        description: "Notion integration token",
+        required: true,
+      },
+    ],
+    volumes: [],
+  },
+  // Magic MCP Server (from docs)
+  {
+    key: "magic-mcp-server",
+    name: "magic-mcp-server",
+    image: "ghcr.io/labknowledge/magic-mcp:latest",
+    description:
+      "Magic Component Platform (MCP) is a powerful AI-driven tool for creating UI components via natural language.",
+    ports: [],
+    icon: "✨",
+    env: [],
+    volumes: [],
+  },
+  // Repomix MCP Server (from manifest)
+  {
+    key: "repomix-mcp-server",
+    name: "repomix-mcp-server",
+    image: "ghcr.io/labknowledge/repomix:latest",
+    description: "Pack your codebase into AI-friendly formats.",
+    ports: [],
+    icon: "🧩",
+    env: [],
+    volumes: [],
+  },
+  // Semgrep MCP Server (from manifest)
+  {
+    key: "semgrep-mcp-server",
+    name: "semgrep-mcp-server",
+    image: "ghcr.io/metorial/mcp-container--semgrep--mcp--mcp",
+    description:
+      "A Model Context Protocol (MCP) server for using Semgrep to scan code for security vulnerabilities. Secure your [vibe coding](https://semgrep.dev/blog/2025/giving-appsec-a-seat-at-the-vibe-coding-table/)! 😅",
+    ports: [],
+    icon: "🔎",
+    env: [],
+    volumes: [],
+  },
+  // QA Sphere MCP Server (from catalog)
+  {
+    key: "qa-sphere-mcp-server",
+    name: "qa-sphere-mcp-server",
+    image: "ghcr.io/labknowledge/qa-sphere-mcp-server:latest",
+    description:
+      "A Model Context Protocol server for the QA Sphere test management system.",
+    ports: [],
+    icon: "🧪",
+    env: [],
+    volumes: [],
+  },
+  // GitMCP (from catalog)
+  {
+    key: "gitmcp",
+    name: "gitmcp",
+    image: "ghcr.io/labknowledge/gitmcp:latest",
+    description:
+      "Put an end to hallucinations! GitMCP is a free, open-source, remote MCP server for any GitHub project.",
+    ports: [],
+    icon: "🔗",
+    env: [],
+    volumes: [],
+  },
+  // SearXNG MCP Server (from catalog)
+  {
+    key: "searxng-mcp-server",
+    name: "searxng-mcp-server",
+    image: "ghcr.io/labknowledge/searxng-mcp-server:latest",
+    description:
+      "An MCP server implementation that integrates the SearxNG API, providing web search capabilities.",
+    ports: [],
+    icon: "🌐",
+    env: [],
+    volumes: [],
+  },
+  // Image Compression MCP Server (from catalog)
+  {
+    key: "image-compression-mcp-server",
+    name: "image-compression-mcp-server",
+    image: "ghcr.io/labknowledge/image-compression:latest",
+    description:
+      "A high-performance image compression microservice based on MCP (Modal Context Protocol).",
+    ports: [],
+    icon: "🖼️",
+    env: [],
+    volumes: [],
+  },
+  // Fetch MCP Server (from manifest)
+  {
+    key: "fetch-mcp-server",
+    name: "fetch-mcp-server",
+    image: "ghcr.io/modelcontextprotocol/servers:latest",
+    description: "Fetch MCP Server.",
+    ports: [],
+    icon: "📡",
+    env: [],
+    volumes: [],
+  },
+  // Everything MCP Server (from manifest)
+  {
+    key: "everything-mcp-server",
+    name: "everything-mcp-server",
+    image: "ghcr.io/modelcontextprotocol/servers:latest",
+    description: "Everything MCP Server.",
+    ports: [],
+    icon: "🌐",
+    env: [],
+    volumes: [],
+  },
+  // Playwright MCP Server (from docs)
+  {
+    key: "playwright-mcp-server",
+    name: "playwright-mcp-server",
+    image: "ghcr.io/labknowledge/playwright-mcp:latest",
+    description:
+      "Official Playwright MCP Server by Microsoft. Provides browser automation capabilities for AI agents.",
+    ports: [],
+    icon: "🕸️",
+    env: [],
+    volumes: [],
+  },
+  // Octagon MCP Server (from docs)
+  {
+    key: "octagon-mcp-server",
+    name: "octagon-mcp-server",
+    image: "ghcr.io/labknowledge/octagon-mcp-server:latest",
+    description:
+      "Official Octagon MCP Server by OctagonAI. Provides AI agent capabilities and integrations.",
+    ports: [],
+    icon: "🛑",
+    env: [],
+    volumes: [],
+  },
+  // ScreenshotOne MCP Server (from docs)
+  {
+    key: "screenshotone-mcp-server",
+    name: "screenshotone-mcp-server",
+    image: "ghcr.io/labknowledge/screenshotone-mcp:latest",
+    description:
+      "Official ScreenshotOne MCP Server. Provides screenshot automation and capture capabilities for AI agents.",
+    ports: [],
+    icon: "📸",
+    env: [],
+    volumes: [],
+  },
+  // Unstructured MCP Server (from docs)
+  {
+    key: "unstructured-mcp-server",
+    name: "unstructured-mcp-server",
+    image: "ghcr.io/labknowledge/uns-mcp:latest",
+    description:
+      "Official Unstructured MCP Server by Unstructured-IO. Provides document parsing and extraction capabilities for AI agents.",
+    ports: [],
+    icon: "📄",
+    env: [],
+    volumes: [],
+  },
+];
+
 const steps = [
+  {
+    key: "template",
+    title: "Template",
+    description:
+      "Choose a popular app to deploy with one click, or skip to manual setup.",
+  },
   {
     key: "image",
     title: "Image",
@@ -194,6 +619,7 @@ export default function DeployImagePage() {
   const [logsError, setLogsError] = useState<string | null>(null);
   const [pullLogs, setPullLogs] = useState<string[]>([]);
   const logsInterval = useRef<NodeJS.Timeout | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
 
   // Poll logs if deploying
   useEffect(() => {
@@ -298,8 +724,79 @@ export default function DeployImagePage() {
     if (step > 0) setStep(step - 1);
   }
 
+  // Helper to auto-fill form from template and fetch free ports
+  async function handleTemplateSelect(template: TemplateDef) {
+    setSelectedTemplate(template.key);
+    // Ask backend for free ports for this template
+    const res = await fetch(`/api/docker/containers/free-ports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ports: template.ports }),
+    });
+    const data = await res.json();
+    const autoPorts = (data.ports || template.ports).map(
+      (p: TemplatePort, i: number) => ({
+        host: (data.ports && data.ports[i] && data.ports[i].host) || "",
+        container: p.container,
+      }),
+    );
+    setForm({
+      ...form,
+      image: template.image,
+      name: template.name.toLowerCase(),
+      ports: autoPorts,
+    });
+    setStep(1); // Go to next step (image)
+  }
+
   // Render fields for the current step
   function renderStep() {
+    if (step === 0) {
+      // Template selection UI
+      return (
+        <div>
+          <div className="mb-4 text-lg font-semibold text-gray-800">
+            Choose a Template
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {templates.map((tpl) => (
+              <button
+                key={tpl.key}
+                className={`border rounded-lg p-4 flex flex-col items-start shadow hover:shadow-lg transition-all duration-150 ${selectedTemplate === tpl.key ? "border-blue-600 bg-blue-50" : "border-gray-200 bg-white"}`}
+                onClick={() => handleTemplateSelect(tpl)}
+                type="button"
+              >
+                <span className="text-3xl mb-2">{tpl.icon}</span>
+                <span className="font-bold text-gray-900">{tpl.name}</span>
+                <span className="text-gray-600 text-sm mb-2">
+                  {tpl.description}
+                </span>
+                <span className="text-xs text-gray-500">
+                  Image: <span className="font-mono">{tpl.image}</span>
+                </span>
+                <span className="text-xs text-gray-500 mt-1">
+                  Ports: {tpl.ports.map((p) => p.container).join(", ")}
+                </span>
+                {selectedTemplate === tpl.key && (
+                  <span className="mt-2 text-blue-600 font-semibold text-xs">
+                    Selected
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          <div className="mt-6 text-center">
+            <button
+              className="text-blue-600 underline text-sm"
+              type="button"
+              onClick={() => setStep(1)}
+            >
+              Or skip and configure manually
+            </button>
+          </div>
+        </div>
+      );
+    }
     if (step === steps.length) {
       return (
         <div className="space-y-4">
