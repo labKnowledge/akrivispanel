@@ -17,6 +17,9 @@ WORKDIR /app
 
 ENV NODE_ENV production
 
+# Install coreutils for df, du, etc.
+RUN apk add --no-cache coreutils
+
 # Only copy necessary files for production
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
