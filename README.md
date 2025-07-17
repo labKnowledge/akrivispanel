@@ -61,7 +61,7 @@ The fastest way to get started is with Docker:
 
 ```bash
 docker pull ghcr.io/labknowledge/akrivispanel
-docker run -d -p 3000:3000  --gpus all -v /:/hostroot:ro -v /var/lib/docker/volumes:/var/lib/docker/volumes:ro --privileged -e HOST_ROOT=/hostroot -v /var/run/docker.sock:/var/run/docker.sock   -v akrivispanel_data:/app/data
+docker run -d -p 3000:3000  --gpus all -v /:/hostroot:ro -v /var/lib/docker/volumes:/var/lib/docker/volumes:ro --privileged -e HOST_ROOT=/hostroot -v /var/run/docker.sock:/var/run/docker.sock   -v akrivispanel_data:/app/data \
   --name akrivispanel \
   ghcr.io/labknowledge/akrivispanel
 ```
